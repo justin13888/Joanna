@@ -35,6 +35,58 @@ function NotebookPaper({
 	);
 }
 
+/* ─── Writing pencil animation ─── */
+
+function WritingPencil() {
+	return (
+		<span className="relative -top-1 ml-1.5 inline-flex items-center align-middle">
+			{/* Pencil */}
+			<span
+				className="inline-block"
+				style={{
+					animation: "pencil-write 1.6s ease-in-out infinite",
+					transformOrigin: "85% 85%",
+				}}
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+				width="22"
+				height="22"
+					viewBox="0 0 24 24"
+					fill="none"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				>
+					{/* Pencil body */}
+					<path
+						d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"
+						stroke="rgb(167 139 250)"
+						strokeWidth="1.5"
+						fill="rgb(237 233 254 / 0.5)"
+					/>
+					{/* Edit line */}
+					<path
+						d="m15 5 4 4"
+						stroke="rgb(167 139 250)"
+						strokeWidth="1.5"
+					/>
+					{/* Pencil tip fill */}
+					<path
+						d="M3.842 16.174 L2.02 21.356 L6.373 20.036 Z"
+						fill="rgb(196 181 253)"
+						stroke="none"
+					/>
+				</svg>
+			</span>
+			{/* Writing dot at pencil tip */}
+			<span
+				className="absolute bottom-1.5 -left-0.5 h-1 w-1 rounded-full bg-violet-400"
+				style={{ animation: "pencil-dot 0.8s ease-in-out infinite" }}
+			/>
+		</span>
+	);
+}
+
 /* ─── Main component ─── */
 
 export function VoiceScreen() {
@@ -42,9 +94,15 @@ export function VoiceScreen() {
 	const [transcript, setTranscript] = useState("");
 	const [interimText, setInterimText] = useState("");
 	const [isSupported, setIsSupported] = useState(true);
-	const [contextPrompt] = useState(
-		() => CONTEXT_PROMPTS[Math.floor(Math.random() * CONTEXT_PROMPTS.length)],
-	);
+	const [contextPrompt, setContextPrompt] = useState(CONTEXT_PROMPTS[0]);
+
+	// Pick a random prompt only on the client to avoid hydration mismatch
+	useEffect(() => {
+		setContextPrompt(
+			CONTEXT_PROMPTS[Math.floor(Math.random() * CONTEXT_PROMPTS.length)] ??
+				CONTEXT_PROMPTS[0],
+		);
+	}, []);
 
 	// Audio volume for reactive orb
 	const [volume, setVolume] = useState(0);
@@ -247,30 +305,31 @@ export function VoiceScreen() {
 						</div>
 					)}
 
-					{(state === "listening" || state === "stopped") && (
-						<div style={{ animation: "fade-in 0.3s ease-out" }}>
+				{(state === "listening" || state === "stopped") && (
+					<div style={{ animation: "fade-in 0.3s ease-out" }}>
+						<p className="text-base leading-7">
 							{transcript ? (
-								<p className="text-base leading-7 text-stone-700">
-									{transcript}
-								</p>
+								<span className="text-stone-700">{transcript}</span>
 							) : null}
 							{interimText ? (
-								<span className="text-base leading-7 text-stone-400 italic">
+								<span className="text-stone-400 italic">
 									{interimText}
 								</span>
 							) : null}
 							{!transcript && !interimText && state === "listening" && (
-								<p className="text-base leading-7 text-stone-300 italic">
+								<span className="text-stone-300 italic">
 									Start speaking, your words will appear here...
-								</p>
+								</span>
 							)}
 							{state === "stopped" && !transcript && (
-								<p className="text-base leading-7 text-stone-300 italic">
+								<span className="text-stone-300 italic">
 									No speech detected. Tap the orb to try again.
-								</p>
+								</span>
 							)}
-						</div>
-					)}
+							{state === "listening" && <WritingPencil />}
+						</p>
+					</div>
+				)}
 				</div>
 			</NotebookPaper>
 
