@@ -91,6 +91,13 @@ export function VoiceScreen() {
 	const [volume, setVolume] = useState(0);
 	const [contextPrompt, setContextPrompt] = useState(CONTEXT_PROMPTS[0]);
 
+	// Debug: timestamp override
+	const [showTimePicker, setShowTimePicker] = useState(false);
+	const [recordingTimestamp, setRecordingTimestamp] = useState(() => {
+		const now = new Date();
+		return now.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
+	});
+
 	const wsRef = useRef<WebSocket | null>(null);
 	const audioCtxRef = useRef<AudioContext | null>(null);
 	const streamRef = useRef<MediaStream | null>(null);
@@ -107,7 +114,7 @@ export function VoiceScreen() {
 	useEffect(() => {
 		setContextPrompt(
 			CONTEXT_PROMPTS[Math.floor(Math.random() * CONTEXT_PROMPTS.length)] ??
-				CONTEXT_PROMPTS[0],
+			CONTEXT_PROMPTS[0],
 		);
 	}, []);
 
@@ -166,7 +173,8 @@ export function VoiceScreen() {
 			const pcm = new Int16Array(input.length);
 
 			for (let i = 0; i < input.length; i++) {
-				pcm[i] = Math.max(-32768, Math.min(32767, input[i] * 32768));
+				const sample = input[i] ?? 0;
+				pcm[i] = Math.max(-32768, Math.min(32767, sample * 32768));
 			}
 
 			wsRef.current.send(pcm.buffer);
@@ -285,6 +293,54 @@ export function VoiceScreen() {
 
 				{state === "idle" && transcript && (
 					<button onClick={resetVoice}>Start Over</button>
+				)}
+			</div>
+
+			{/* Debug: Timestamp override button */}
+			<div className="absolute bottom-4 right-4 z-20">
+				{showTimePicker ? (
+					<div className="rounded-xl bg-white/95 backdrop-blur border border-violet-200 shadow-lg p-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+						<div className="flex items-center justify-between mb-2">
+							<span className="text-xs font-medium text-stone-500">Recording Time</span>
+							<button
+								onClick={() => setShowTimePicker(false)}
+								className="text-stone-400 hover:text-stone-600 p-0.5"
+							>
+								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+									<path d="M18 6L6 18M6 6l12 12" />
+								</svg>
+							</button>
+						</div>
+						<input
+							type="datetime-local"
+							value={recordingTimestamp}
+							onChange={(e) => setRecordingTimestamp(e.target.value)}
+							className="w-full rounded-lg border border-violet-200 px-2 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
+						/>
+						<p className="mt-1.5 text-[10px] text-stone-400">
+							Debug: Override timestamp for backfilling
+						</p>
+					</div>
+				) : (
+					<button
+						onClick={() => setShowTimePicker(true)}
+						className="flex h-10 w-10 items-center justify-center rounded-full bg-white/80 backdrop-blur border border-violet-200/50 shadow-sm hover:bg-white hover:shadow transition-all"
+						title="Override recording timestamp"
+					>
+						<svg
+							width="18"
+							height="18"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="rgb(167 139 250)"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							<circle cx="12" cy="12" r="10" />
+							<polyline points="12 6 12 12 16 14" />
+						</svg>
+					</button>
 				)}
 			</div>
 		</div>
