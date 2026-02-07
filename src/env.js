@@ -19,6 +19,8 @@ export const env = createEnv({
 		LLM_MODEL: z.string().default("gemini-2.0-flash"),
 		// Google API key for Gemini multimodal (audio/voice)
 		GOOGLE_API_KEY: z.string(),
+		// ElevenLabs API key for text-to-speech
+		ELEVENLABS_API_KEY: z.string(),
 		// JWT configuration (minimal - TODO: strengthen for production)
 		JWT_SECRET: z.string().min(32),
 	},
@@ -44,6 +46,7 @@ export const env = createEnv({
 		LLM_PROVIDER: process.env.LLM_PROVIDER,
 		LLM_MODEL: process.env.LLM_MODEL,
 		GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
+		ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
 		JWT_SECRET: process.env.JWT_SECRET,
 		// NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
 	},
