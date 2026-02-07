@@ -11,6 +11,14 @@ export const env = createEnv({
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
+		// Backboard.io configuration
+		BACKBOARD_API_KEY: z.string(),
+		BACKBOARD_ASSISTANT_ID: z.string().optional(), // Will be created on first run if not set
+		// LLM configuration
+		LLM_PROVIDER: z.enum(["openai", "anthropic", "google"]).default("google"),
+		LLM_MODEL: z.string().default("gemini-2.0-flash"),
+		// JWT configuration (minimal - TODO: strengthen for production)
+		JWT_SECRET: z.string().min(32),
 	},
 
 	/**
@@ -29,6 +37,11 @@ export const env = createEnv({
 	runtimeEnv: {
 		DATABASE_URL: process.env.DATABASE_URL,
 		NODE_ENV: process.env.NODE_ENV,
+		BACKBOARD_API_KEY: process.env.BACKBOARD_API_KEY,
+		BACKBOARD_ASSISTANT_ID: process.env.BACKBOARD_ASSISTANT_ID,
+		LLM_PROVIDER: process.env.LLM_PROVIDER,
+		LLM_MODEL: process.env.LLM_MODEL,
+		JWT_SECRET: process.env.JWT_SECRET,
 		// NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
 	},
 	/**

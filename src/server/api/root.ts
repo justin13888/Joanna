@@ -1,3 +1,7 @@
+import { authRouter } from "@/server/api/routers/auth";
+import { conversationRouter } from "@/server/api/routers/conversation";
+import { memoryRouter } from "@/server/api/routers/memory";
+import { messageRouter } from "@/server/api/routers/message";
 import { postRouter } from "@/server/api/routers/post";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
@@ -7,7 +11,11 @@ import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
-	post: postRouter,
+	// Joanna voice assistant routers
+	auth: authRouter,
+	conversation: conversationRouter,
+	message: messageRouter,
+	memory: memoryRouter,
 });
 
 // export type definition of API
