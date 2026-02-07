@@ -7,6 +7,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { createMockBackboardService } from "./test-utils";
 
+// TODO: Finish non-mock integration tests
+
 describe("BackboardService (Mocked)", () => {
     let service: ReturnType<typeof createMockBackboardService>;
 
