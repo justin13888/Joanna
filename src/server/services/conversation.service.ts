@@ -8,7 +8,7 @@ import { and, desc, eq, lt, sql } from "drizzle-orm";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import type * as schema from "@/server/db/schema";
 import { conversations, messages } from "@/server/db/schema";
-import type { BackboardService } from "./backboard.service";
+import type { IBackboardService } from "./backboard.service";
 import type {
     ConversationStatus,
     ConversationSummary,
@@ -23,7 +23,7 @@ type DrizzleDB = PostgresJsDatabase<typeof schema>;
 export class ConversationService {
     constructor(
         private db: DrizzleDB,
-        private backboardService: BackboardService,
+        private backboardService: IBackboardService,
     ) { }
 
     // === CRUD Operations ===

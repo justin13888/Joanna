@@ -15,7 +15,7 @@ describe("MemoryRetrievalService", () => {
     beforeEach(() => {
         mockBackboard = createMockBackboardService();
         service = new MemoryRetrievalService(
-            mockBackboard as unknown as Parameters<typeof MemoryRetrievalService>[0],
+            mockBackboard as unknown as ConstructorParameters<typeof MemoryRetrievalService>[0],
         );
     });
 

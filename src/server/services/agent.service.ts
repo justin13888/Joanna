@@ -11,7 +11,7 @@
 import type { ConversationService } from "./conversation.service";
 import type { MemorySynthesisService } from "./memory-synthesis.service";
 import type { MemoryRetrievalService } from "./memory-retrieval.service";
-import type { BackboardService } from "./backboard.service";
+import type { IBackboardService } from "./backboard.service";
 import type {
     AgentPlanningState,
     AgentResponse,
@@ -27,7 +27,7 @@ export class AgentService {
         private conversationService: ConversationService,
         private memorySynthesisService: MemorySynthesisService,
         private memoryRetrievalService: MemoryRetrievalService,
-        private backboardService: BackboardService,
+        private backboardService: IBackboardService,
     ) { }
 
     /**

@@ -14,7 +14,7 @@ describe("MemorySynthesisService", () => {
     beforeEach(() => {
         mockBackboard = createMockBackboardService();
         service = new MemorySynthesisService(
-            mockBackboard as unknown as Parameters<typeof MemorySynthesisService>[0],
+            mockBackboard as unknown as ConstructorParameters<typeof MemorySynthesisService>[0],
         );
     });
 
@@ -45,7 +45,7 @@ describe("MemorySynthesisService", () => {
             const result = await service.synthesize({
                 userMessage: "It's going great!",
                 conversationContext: [
-                    { role: "assistant", content: "How is your new job going?" },
+                    { role: "assistant", content: "How is your new job going?", id: "msg-123", createdAt: new Date() },
                 ],
             });
 
