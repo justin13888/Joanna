@@ -1,0 +1,23 @@
+name: joanna
+
+services:
+  database:
+    image: postgres:latest
+    container_name: joanna-postgres
+    environment:
+      POSTGRES_USER: postgres
+      # Defaults to "password" if POSTGRES_PASSWORD is not set in .env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      # Defaults to "joanna" if DB_NAME is not set in .env
+      POSTGRES_DB: ${DB_NAME:-joanna}
+    ports:
+      # Defaults to 5432 if DB_PORT is not set in .env
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      # Data persistence
+      # Postgres 18+ recommends mounting parent directory to support pg_upgrade
+      - postgres_data:/var/lib/postgresql
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
