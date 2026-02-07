@@ -40,25 +40,34 @@ export class ElevenLabsService {
      * Returns a Buffer of audio data (MP3 format).
      */
     async textToSpeech(text: string, options?: TTSOptions): Promise<Buffer> {
-        const audioStream = await this.client.textToSpeech.convert(
-            options?.voiceId ?? this.defaultVoiceId,
-            {
-                text,
-                modelId: options?.modelId ?? this.defaultModelId,
+        console.log("[ElevenLabs] TTS request - text length:", text.length, "voiceId:", options?.voiceId ?? this.defaultVoiceId);
+
+        try {
+            const audioStream = await this.client.textToSpeech.convert(
+                options?.voiceId ?? this.defaultVoiceId,
+                {
+                    text,
+                    modelId: options?.modelId ?? this.defaultModelId,
+                }
+            );
+
+            // Collect chunks from the stream
+            const chunks: Buffer[] = [];
+            const reader = audioStream.getReader();
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(Buffer.from(value));
             }
-        );
 
-        // Collect chunks from the stream
-        const chunks: Buffer[] = [];
-        const reader = audioStream.getReader();
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            chunks.push(Buffer.from(value));
+            const result = Buffer.concat(chunks);
+            console.log("[ElevenLabs] TTS success - audio size:", result.length, "bytes");
+            return result;
+        } catch (error) {
+            console.error("[ElevenLabs] TTS error:", error);
+            throw error;
         }
-
-        return Buffer.concat(chunks);
     }
 
     /**
