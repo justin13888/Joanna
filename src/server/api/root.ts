@@ -2,7 +2,6 @@ import { authRouter } from "@/server/api/routers/auth";
 import { conversationRouter } from "@/server/api/routers/conversation";
 import { memoryRouter } from "@/server/api/routers/memory";
 import { messageRouter } from "@/server/api/routers/message";
-import { postRouter } from "@/server/api/routers/post";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**

@@ -84,6 +84,10 @@ export const createTRPCContext = async (opts: { headers: Headers }) => {
 		} catch {
 			// Invalid token - will be handled by protected procedure
 		}
+	} else {
+		// TODO: remove this fallback for production
+		// Fallback to a hardcoded user for development/demo
+		userId = "00000000-0000-0000-0000-000000000000";
 	}
 
 	return {

@@ -7,7 +7,7 @@
  *
  * This runs as part of the agent loop BEFORE storing memories in Backboard.
  */
-import type { BackboardService } from "./backboard.service";
+import type { IBackboardService } from "./backboard.service";
 import type {
     ExtractedMemory,
     Message,
@@ -29,7 +29,7 @@ interface SynthesisResponse {
 }
 
 export class MemorySynthesisService {
-    constructor(private backboardService: BackboardService) { }
+    constructor(private backboardService: IBackboardService) { }
 
     /**
      * Synthesize memories and follow-up questions from user input.

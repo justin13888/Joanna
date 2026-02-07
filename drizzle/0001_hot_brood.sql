@@ -1,0 +1,1 @@
+DROP TABLE "joanna_post" CASCADE;

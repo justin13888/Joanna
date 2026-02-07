@@ -4,7 +4,7 @@
  * Fetches relevant memories from Backboard.io for contextual responses.
  * Uses semantic search based on current conversation topics.
  */
-import type { BackboardService } from "./backboard.service";
+import type { IBackboardService } from "./backboard.service";
 import type {
     Message,
     MemoryStats,
@@ -13,7 +13,7 @@ import type {
 } from "@/server/types";
 
 export class MemoryRetrievalService {
-    constructor(private backboardService: BackboardService) { }
+    constructor(private backboardService: IBackboardService) { }
 
     /**
      * Retrieve memories relevant to the current conversation context.

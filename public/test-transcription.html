@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Transcription Test</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+        }
+
+        .status {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 10px;
+            color: #fff;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+
+        .status.connected {
+            background: rgba(46, 204, 113, 0.3);
+        }
+
+        .status.error {
+            background: rgba(231, 76, 60, 0.3);
+        }
+
+        .status.recording {
+            background: rgba(52, 152, 219, 0.3);
+        }
+
+        .record-btn {
+            display: block;
+            width: 100%;
+            padding: 20px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .record-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .record-btn:active,
+        .record-btn.recording {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            transform: translateY(0);
+        }
+
+        .record-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        label {
+            color: rgba(255, 255, 255, 0.8);
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 15px;
+            font-size: 1rem;
+            font-family: inherit;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #fff;
+            resize: vertical;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: rgba(102, 126, 234, 0.5);
+        }
+
+        .clear-btn {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .clear-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎤 Live Transcription</h1>
+        <p class="subtitle">Hold the button to speak, release to stop</p>
+
+        <div id="status" class="status">Connecting to WebSocket...</div>
+
+        <button id="recordBtn" class="record-btn" disabled>
+            🎙️ Hold to Record
+        </button>
+
+        <label for="transcript">Transcript:</label>
+        <textarea id="transcript" readonly placeholder="Transcription will appear here..."></textarea>
+        <button class="clear-btn"
+            onclick="document.getElementById('transcript').value = ''; document.getElementById('debug').textContent = ''">Clear</button>
+
+        <label style="margin-top: 20px;">Debug Log:</label>
+        <div id="debug"
+            style="background: rgba(0,0,0,0.5); color: #0f0; font-family: monospace; padding: 10px; border-radius: 5px; height: 100px; overflow-y: auto; font-size: 0.8rem;">
+        </div>
+    </div>
+
+    <script>
+        const WS_URL = 'ws://localhost:3000/ws/live';
+        const statusEl = document.getElementById('status');
+        const recordBtn = document.getElementById('recordBtn');
+        const transcriptEl = document.getElementById('transcript');
+
+        let ws = null;
+        let mediaRecorder = null;
+        let audioContext = null;
+        let isRecording = false;
+
+        // Connect to WebSocket
+        function connect() {
+            ws = new WebSocket(WS_URL);
+
+            ws.onopen = () => {
+                console.log('WebSocket connected');
+            };
+
+            ws.onmessage = (event) => {
+                const debugEl = document.getElementById('debug');
+                const data = JSON.parse(event.data);
+                const now = new Date().toLocaleTimeString();
+                const rec = isRecording ? '🔴' : '⚪';
+                debugEl.innerHTML += `${now} ${rec} ${data.type}: ${data.text || data.message || 'ok'}<br>`;
+                debugEl.scrollTop = debugEl.scrollHeight;
+                console.log('Received:', data, 'isRecording:', isRecording);
+
+                if (data.type === 'ready') {
+                    statusEl.textContent = '✅ Connected - Ready to record';
+                    statusEl.className = 'status connected';
+                    recordBtn.disabled = false;
+                } else if (data.type === 'transcript') {
+                    // ALWAYS update transcript
+                    transcriptEl.value += data.text;
+                    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+                } else if (data.type === 'error') {
+                    statusEl.textContent = '❌ Error: ' + data.message;
+                    statusEl.className = 'status error';
+                }
+            };
+
+            ws.onclose = () => {
+                statusEl.textContent = '🔌 Disconnected - Reconnecting...';
+                statusEl.className = 'status';
+                recordBtn.disabled = true;
+                setTimeout(connect, 2000);
+            };
+
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+                statusEl.textContent = '❌ Connection error';
+                statusEl.className = 'status error';
+            };
+        }
+
+        // Start recording
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        sampleRate: 16000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                    }
+                });
+
+                audioContext = new AudioContext({ sampleRate: 16000 });
+                const source = audioContext.createMediaStreamSource(stream);
+                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+                processor.onaudioprocess = (e) => {
+                    if (!isRecording || ws.readyState !== WebSocket.OPEN) return;
+
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    // Convert float32 to int16 PCM
+                    const pcmData = new Int16Array(inputData.length);
+                    for (let i = 0; i < inputData.length; i++) {
+                        pcmData[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+                    }
+
+                    // Send as binary
+                    ws.send(pcmData.buffer);
+                };
+
+                source.connect(processor);
+                processor.connect(audioContext.destination);
+
+                isRecording = true;
+                recordBtn.textContent = '🔴 Recording...';
+                recordBtn.classList.add('recording');
+                statusEl.textContent = '🎤 Recording - Speak now!';
+                statusEl.className = 'status recording';
+
+                // Store for cleanup
+                recordBtn._stream = stream;
+                recordBtn._processor = processor;
+                recordBtn._source = source;
+
+            } catch (err) {
+                console.error('Error starting recording:', err);
+                statusEl.textContent = '❌ Microphone access denied';
+                statusEl.className = 'status error';
+            }
+        }
+
+        // Stop recording
+        function stopRecording() {
+            isRecording = false;
+            recordBtn.textContent = '🎙️ Hold to Record';
+            recordBtn.classList.remove('recording');
+            statusEl.textContent = '⏳ Processing final words...';
+            statusEl.className = 'status connected';
+
+            // Signal end of audio to flush pending transcription
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'end' }));
+            }
+
+            // Stop the stream tracks but keep everything else alive
+            if (recordBtn._stream) {
+                recordBtn._stream.getTracks().forEach(track => track.stop());
+                recordBtn._stream = null;
+            }
+            if (recordBtn._processor) {
+                recordBtn._processor.disconnect();
+                recordBtn._processor = null;
+            }
+            if (recordBtn._source) {
+                recordBtn._source.disconnect();
+                recordBtn._source = null;
+            }
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.close();
+                audioContext = null;
+            }
+
+            // Reset status after a delay
+            setTimeout(() => {
+                if (!isRecording) {
+                    statusEl.textContent = '✅ Connected - Ready to record';
+                }
+            }, 2000);
+        }
+
+        // Event listeners
+        recordBtn.addEventListener('mousedown', startRecording);
+        recordBtn.addEventListener('mouseup', stopRecording);
+        recordBtn.addEventListener('mouseleave', () => {
+            if (isRecording) stopRecording();
+        });
+
+        // Touch support for mobile
+        recordBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startRecording();
+        });
+        recordBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopRecording();
+        });
+
+        // Start connection
+        connect();
+    </script>
+</body>
+
+</html>

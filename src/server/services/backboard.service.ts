@@ -20,7 +20,78 @@ import type {
     RetrievedMemory,
 } from "@/server/types";
 
-export class BackboardService {
+export interface IBackboardService {
+    /**
+     * Ensure an assistant exists, creating one if necessary.
+     * Returns the assistant ID.
+     */
+    ensureAssistant(config: AssistantConfig): Promise<string>;
+
+    /**
+     * Get assistant by ID.
+     */
+    getAssistant(assistantId: string): Promise<Assistant>;
+
+    /**
+     * Get the current assistant ID (throws if not initialized).
+     */
+    getAssistantId(): string;
+
+    /**
+     * Create a new thread (conversation).
+     * Returns the thread ID.
+     */
+    createThread(): Promise<string>;
+
+    /**
+     * Get thread by ID.
+     */
+    getThread(threadId: string): Promise<BackboardThread>;
+
+    /**
+     * Delete a thread.
+     */
+    deleteThread(threadId: string): Promise<void>;
+
+    /**
+     * Add a message to a thread and get the assistant's response.
+     * Uses the configured LLM provider and model.
+     */
+    addMessage(params: {
+        threadId: string;
+        content: string;
+        memoryMode: MemoryMode;
+        systemPrompt?: string;
+    }): Promise<BackboardAssistantResponse>;
+
+    /**
+     * Add a message with streaming response.
+     * Returns an async iterator of response chunks.
+     */
+    addMessageStreaming(params: {
+        threadId: string;
+        content: string;
+        memoryMode: MemoryMode;
+        systemPrompt?: string;
+    }): AsyncGenerator<string, void, unknown>;
+
+    /**
+     * Get all memories for the assistant.
+     */
+    getMemories(params?: { limit?: number }): Promise<RetrievedMemory[]>;
+
+    /**
+     * Get memory statistics.
+     */
+    getMemoryStats(): Promise<MemoryStats>;
+
+    /**
+     * Delete a specific memory.
+     */
+    deleteMemory(memoryId: string): Promise<void>;
+}
+
+export class BackboardService implements IBackboardService {
     private client: BackboardClient;
     private assistantId: string | null;
     private llmProvider: string;
@@ -40,10 +111,6 @@ export class BackboardService {
 
     // === Assistant Management ===
 
-    /**
-     * Ensure an assistant exists, creating one if necessary.
-     * Returns the assistant ID.
-     */
     async ensureAssistant(config: AssistantConfig): Promise<string> {
         if (this.assistantId) {
             // Verify assistant exists
@@ -71,16 +138,10 @@ export class BackboardService {
         return this.assistantId;
     }
 
-    /**
-     * Get assistant by ID.
-     */
     async getAssistant(assistantId: string): Promise<Assistant> {
         return await this.client.getAssistant(assistantId);
     }
 
-    /**
-     * Get the current assistant ID (throws if not initialized).
-     */
     getAssistantId(): string {
         if (!this.assistantId) {
             throw new Error("BackboardService: Assistant not initialized");
@@ -90,19 +151,12 @@ export class BackboardService {
 
     // === Thread (Conversation) Management ===
 
-    /**
-     * Create a new thread (conversation).
-     * Returns the thread ID.
-     */
     async createThread(): Promise<string> {
         const assistantId = this.getAssistantId();
         const thread = await this.client.createThread(assistantId);
         return thread.threadId;
     }
 
-    /**
-     * Get thread by ID.
-     */
     async getThread(threadId: string): Promise<BackboardThread> {
         const thread = await this.client.getThread(threadId);
         return {
@@ -111,19 +165,12 @@ export class BackboardService {
         };
     }
 
-    /**
-     * Delete a thread.
-     */
     async deleteThread(threadId: string): Promise<void> {
         await this.client.deleteThread(threadId);
     }
 
     // === Messages ===
 
-    /**
-     * Add a message to a thread and get the assistant's response.
-     * Uses the configured LLM provider and model.
-     */
     async addMessage(params: {
         threadId: string;
         content: string;
@@ -148,10 +195,6 @@ export class BackboardService {
         };
     }
 
-    /**
-     * Add a message with streaming response.
-     * Returns an async iterator of response chunks.
-     */
     async *addMessageStreaming(params: {
         threadId: string;
         content: string;
@@ -176,9 +219,6 @@ export class BackboardService {
 
     // === Memory Operations ===
 
-    /**
-     * Get all memories for the assistant.
-     */
     async getMemories(params?: { limit?: number }): Promise<RetrievedMemory[]> {
         const assistantId = this.getAssistantId();
         const response = await this.client.getMemories(assistantId);
@@ -194,9 +234,6 @@ export class BackboardService {
         }));
     }
 
-    /**
-     * Get memory statistics.
-     */
     async getMemoryStats(): Promise<MemoryStats> {
         const assistantId = this.getAssistantId();
         const stats: BackboardMemoryStats =
@@ -207,9 +244,6 @@ export class BackboardService {
         };
     }
 
-    /**
-     * Delete a specific memory.
-     */
     async deleteMemory(memoryId: string): Promise<void> {
         const assistantId = this.getAssistantId();
         await this.client.deleteMemory(assistantId, memoryId);

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CONTEXT_PROMPTS } from "./dummy-data";
 import { Orb } from "./orb";
 
-type VoiceState = "idle" | "listening" | "stopped";
+type VoiceState = "idle" | "listening" | "processing" | "speaking";
 
 /* ─── Notebook paper component ─── */
 
@@ -17,7 +17,7 @@ function NotebookPaper({
 }) {
 	return (
 		<div
-			className={`relative overflow-hidden rounded-2xl border border-violet-200/40 bg-white shadow-sm shadow-violet-200/20 ${className}`}
+			className={`relative overflow-auto rounded-2xl border border-violet-200/40 bg-white shadow-sm shadow-violet-200/20 ${className}`}
 			style={{
 				backgroundImage: `repeating-linear-gradient(
 					transparent,
@@ -28,7 +28,6 @@ function NotebookPaper({
 				backgroundPosition: "0 11px",
 			}}
 		>
-			{/* Red margin line */}
 			<div className="absolute inset-y-0 left-11 w-px bg-rose-300/30" />
 			{children}
 		</div>
@@ -40,7 +39,6 @@ function NotebookPaper({
 function WritingPencil() {
 	return (
 		<span className="relative -top-1 ml-1.5 inline-flex items-center align-middle">
-			{/* Pencil */}
 			<span
 				className="inline-block"
 				style={{
@@ -50,27 +48,24 @@ function WritingPencil() {
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
-				width="22"
-				height="22"
+					width="22"
+					height="22"
 					viewBox="0 0 24 24"
 					fill="none"
 					strokeLinecap="round"
 					strokeLinejoin="round"
 				>
-					{/* Pencil body */}
 					<path
 						d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"
 						stroke="rgb(167 139 250)"
 						strokeWidth="1.5"
 						fill="rgb(237 233 254 / 0.5)"
 					/>
-					{/* Edit line */}
 					<path
 						d="m15 5 4 4"
 						stroke="rgb(167 139 250)"
 						strokeWidth="1.5"
 					/>
-					{/* Pencil tip fill */}
 					<path
 						d="M3.842 16.174 L2.02 21.356 L6.373 20.036 Z"
 						fill="rgb(196 181 253)"
@@ -78,7 +73,6 @@ function WritingPencil() {
 					/>
 				</svg>
 			</span>
-			{/* Writing dot at pencil tip */}
 			<span
 				className="absolute bottom-1.5 -left-0.5 h-1 w-1 rounded-full bg-violet-400"
 				style={{ animation: "pencil-dot 0.8s ease-in-out infinite" }}
@@ -93,10 +87,23 @@ export function VoiceScreen() {
 	const [state, setState] = useState<VoiceState>("idle");
 	const [transcript, setTranscript] = useState("");
 	const [interimText, setInterimText] = useState("");
-	const [isSupported, setIsSupported] = useState(true);
+	const [aiResponse, setAiResponse] = useState("");
+	const [volume, setVolume] = useState(0);
 	const [contextPrompt, setContextPrompt] = useState(CONTEXT_PROMPTS[0]);
 
-	// Pick a random prompt only on the client to avoid hydration mismatch
+	const wsRef = useRef<WebSocket | null>(null);
+	const audioCtxRef = useRef<AudioContext | null>(null);
+	const streamRef = useRef<MediaStream | null>(null);
+	const processorRef = useRef<ScriptProcessorNode | null>(null);
+	const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
+	const animFrameRef = useRef<number>(0);
+	const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+	const scrollRef = useRef<HTMLDivElement | null>(null);
+	const stateRef = useRef<VoiceState>("idle");
+
+	stateRef.current = state;
+
+	/* ── client-only random prompt (hydration safe) ── */
 	useEffect(() => {
 		setContextPrompt(
 			CONTEXT_PROMPTS[Math.floor(Math.random() * CONTEXT_PROMPTS.length)] ??
@@ -104,273 +111,180 @@ export function VoiceScreen() {
 		);
 	}, []);
 
-	// Audio volume for reactive orb
-	const [volume, setVolume] = useState(0);
-
-	const recognitionRef = useRef<SpeechRecognition | null>(null);
-	const stateRef = useRef<VoiceState>("idle");
-	const transcriptRef = useRef("");
-	const accumulatedRef = useRef("");
-
-	// Audio analysis refs
-	const audioCtxRef = useRef<AudioContext | null>(null);
-	const animFrameRef = useRef<number>(0);
-	const streamRef = useRef<MediaStream | null>(null);
-
-	stateRef.current = state;
-
-	/* ── Mic volume analysis ── */
-	const startAudioAnalysis = useCallback(async () => {
-		try {
-			const stream = await navigator.mediaDevices.getUserMedia({
-				audio: true,
-			});
-			streamRef.current = stream;
-
-			const ctx = new AudioContext();
-			audioCtxRef.current = ctx;
-			const source = ctx.createMediaStreamSource(stream);
-			const analyser = ctx.createAnalyser();
-			analyser.fftSize = 256;
-			analyser.smoothingTimeConstant = 0.3;
-			source.connect(analyser);
-
-			const buf = new Uint8Array(analyser.fftSize);
-			let smooth = 0;
-			let lastUpdate = 0;
-
-			const tick = () => {
-				analyser.getByteTimeDomainData(buf);
-				let sum = 0;
-				for (let i = 0; i < buf.length; i++) {
-					const v = (buf[i] - 128) / 128;
-					sum += v * v;
-				}
-				const rms = Math.sqrt(sum / buf.length);
-				smooth = smooth * 0.6 + rms * 0.4;
-
-				// Throttle React updates to ~24fps
-				const now = performance.now();
-				if (now - lastUpdate > 42) {
-					setVolume(Math.min(smooth * 4.5, 1));
-					lastUpdate = now;
-				}
-
-				animFrameRef.current = requestAnimationFrame(tick);
-			};
-			tick();
-		} catch {
-			// Audio analysis unavailable — orb won't react, that's fine
-		}
-	}, []);
-
-	const stopAudioAnalysis = useCallback(() => {
-		if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-		animFrameRef.current = 0;
-		audioCtxRef.current?.close().catch(() => {});
-		audioCtxRef.current = null;
-		streamRef.current?.getTracks().forEach((t) => t.stop());
-		streamRef.current = null;
-		setVolume(0);
-	}, []);
-
-	// Clean up on unmount
+	/* ── WebSocket ── */
 	useEffect(() => {
-		return () => {
-			stopAudioAnalysis();
-		};
-	}, [stopAudioAnalysis]);
+		const ws = new WebSocket("ws://localhost:3000/ws/live");
 
-	/* ── Speech recognition setup ── */
-	useEffect(() => {
-		// biome-ignore lint/suspicious/noExplicitAny: webkit prefix
-		const SR: typeof SpeechRecognition | undefined =
-			window.SpeechRecognition ??
-			(window as any).webkitSpeechRecognition ??
-			undefined;
-		if (!SR) {
-			setIsSupported(false);
-			return;
-		}
-		const recognition = new SR();
-		recognition.continuous = true;
-		recognition.interimResults = true;
-		recognition.lang = "en-US";
-
-		recognition.onresult = (event: SpeechRecognitionEvent) => {
-			let finalText = "";
-			let interim = "";
-			for (let i = 0; i < event.results.length; i++) {
-				const r = event.results[i];
-				if (r?.isFinal) finalText += r[0]?.transcript ?? "";
-				else interim += r?.[0]?.transcript ?? "";
-			}
-			const full = accumulatedRef.current + finalText;
-			setTranscript(full);
-			transcriptRef.current = full;
-			setInterimText(interim);
-		};
-
-		recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-			if (event.error !== "no-speech" && event.error !== "aborted")
-				setState("stopped");
-		};
-
-		recognition.onend = () => {
-			if (stateRef.current === "listening") {
-				accumulatedRef.current = transcriptRef.current;
-				try {
-					recognition.start();
-				} catch {
-					setState("stopped");
-				}
+		ws.onmessage = (e) => {
+			const data = JSON.parse(e.data);
+			if (data.type === "transcript") {
+				setTranscript((prev) => prev + data.text);
+				requestAnimationFrame(() => {
+					scrollRef.current!.scrollTop =
+						scrollRef.current!.scrollHeight;
+				});
 			}
 		};
 
-		recognitionRef.current = recognition;
-		return () => {
-			recognition.abort();
-		};
+		wsRef.current = ws;
+		return () => ws.close();
 	}, []);
 
-	const startListening = useCallback(() => {
-		const recognition = recognitionRef.current;
-		if (!recognition || stateRef.current === "listening") return;
+	/* ── Start listening ── */
+	const startListening = useCallback(async () => {
+		if (stateRef.current === "listening") return;
 
-		if (stateRef.current === "idle") {
-			accumulatedRef.current = "";
-			transcriptRef.current = "";
-			setTranscript("");
-			setInterimText("");
-		} else {
-			// "stopped" — continue appending
-			accumulatedRef.current = transcriptRef.current;
-		}
-		try {
-			recognition.start();
-			startAudioAnalysis();
-			setState("listening");
-		} catch {
-			/* already started */
-		}
-	}, [startAudioAnalysis]);
-
-	const stopListening = useCallback(() => {
-		const recognition = recognitionRef.current;
-		if (!recognition || stateRef.current !== "listening") return;
-
-		recognition.stop();
-		accumulatedRef.current = transcriptRef.current;
-		stopAudioAnalysis();
-		setState("stopped");
-	}, [stopAudioAnalysis]);
-
-	const resetVoice = () => {
 		setTranscript("");
 		setInterimText("");
-		transcriptRef.current = "";
-		accumulatedRef.current = "";
-		stopAudioAnalysis();
+		setAiResponse("");
+
+		const stream = await navigator.mediaDevices.getUserMedia({
+			audio: {
+				sampleRate: 16000,
+				channelCount: 1,
+				echoCancellation: true,
+				noiseSuppression: true,
+			},
+		});
+
+		streamRef.current = stream;
+
+		const ctx = new AudioContext({ sampleRate: 16000 });
+		audioCtxRef.current = ctx;
+
+		const source = ctx.createMediaStreamSource(stream);
+		sourceRef.current = source;
+
+		const processor = ctx.createScriptProcessor(4096, 1, 1);
+		processorRef.current = processor;
+
+		processor.onaudioprocess = (e) => {
+			if (stateRef.current !== "listening") return;
+			if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+
+			const input = e.inputBuffer.getChannelData(0);
+			const pcm = new Int16Array(input.length);
+
+			for (let i = 0; i < input.length; i++) {
+				pcm[i] = Math.max(-32768, Math.min(32767, input[i] * 32768));
+			}
+
+			wsRef.current.send(pcm.buffer);
+		};
+
+		source.connect(processor);
+		processor.connect(ctx.destination);
+
+		setState("listening");
+	}, []);
+
+	/* ── Stop listening ── */
+	const stopListening = useCallback(async () => {
+		if (stateRef.current !== "listening") return;
+
+		wsRef.current?.send(JSON.stringify({ type: "end" }));
+
+		processorRef.current?.disconnect();
+		sourceRef.current?.disconnect();
+		streamRef.current?.getTracks().forEach((t) => t.stop());
+		await audioCtxRef.current?.close();
+
+		setState("processing");
+
+		await new Promise((r) => setTimeout(r, 500));
+		await generateSpeech();
+	}, []);
+
+	/* ── TTS ── */
+	const generateSpeech = async () => {
+		if (!transcript.trim()) {
+			setState("idle");
+			return;
+		}
+
+		setState("speaking");
+		setAiResponse("Thinking...");
+
+		const res = await fetch("/api/tts", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ text: `You said: ${transcript}` }),
+		});
+
+		const blob = await res.blob();
+		const url = URL.createObjectURL(blob);
+		const audio = new Audio(url);
+
+		audioPlayerRef.current = audio;
+		setAiResponse(`"${transcript}"`);
+
+		audio.onended = () => {
+			URL.revokeObjectURL(url);
+			setState("idle");
+		};
+
+		audio.play();
+	};
+
+	/* ── Reset ── */
+	const resetVoice = () => {
+		audioPlayerRef.current?.pause();
+		setTranscript("");
+		setInterimText("");
+		setAiResponse("");
+		setVolume(0);
 		setState("idle");
 	};
 
-	/* ═══════ Voice mode ═══════ */
+	/* ── UI ── */
 	return (
 		<div className="relative flex h-full flex-col px-4 pt-[52px] pb-3">
-			{/* Transcript paper area */}
 			<NotebookPaper className="mb-3 flex-1 min-h-0">
-				<div className="h-full overflow-y-auto p-4 pl-14">
-					{/* Header */}
-					<div className="mb-2 flex items-center justify-between">
-						<h2 className="font-handwriting text-xl text-violet-400">
-							Joanna
-						</h2>
-						{state === "listening" && (
-							<span className="flex items-center gap-1.5 rounded-full bg-violet-100 px-2.5 py-1 text-[10px] font-medium text-violet-500">
-								<span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-500" />
-								LIVE
-							</span>
-						)}
-					</div>
+				<div ref={scrollRef} className="h-full overflow-y-auto p-4 pl-14">
+					<h2 className="mb-2 font-handwriting text-xl text-violet-400">
+						Joanna
+					</h2>
 
-					{/* Transcript content */}
-					{state === "idle" && (
-						<div style={{ animation: "fade-in 0.5s ease-out" }}>
-							<p className="mb-3 text-sm leading-7 text-stone-400/80 italic">
-								{contextPrompt}
-							</p>
-							<p className="text-base leading-7 font-medium text-stone-600">
-								What&apos;s on your mind today?
-							</p>
-						</div>
+					{state === "idle" && !transcript && (
+						<p className="italic text-stone-400">{contextPrompt}</p>
 					)}
 
-				{(state === "listening" || state === "stopped") && (
-					<div style={{ animation: "fade-in 0.3s ease-out" }}>
+					{(state === "listening" || transcript) && (
 						<p className="text-base leading-7">
-							{transcript ? (
-								<span className="text-stone-700">{transcript}</span>
-							) : null}
-							{interimText ? (
-								<span className="text-stone-400 italic">
-									{interimText}
-								</span>
-							) : null}
-							{!transcript && !interimText && state === "listening" && (
-								<span className="text-stone-300 italic">
-									Start speaking, your words will appear here...
-								</span>
-							)}
-							{state === "stopped" && !transcript && (
-								<span className="text-stone-300 italic">
-									No speech detected. Tap the orb to try again.
-								</span>
-							)}
+							<span className="text-stone-700">{transcript}</span>
+							<span className="italic text-stone-400">
+								{interimText}
+							</span>
 							{state === "listening" && <WritingPencil />}
 						</p>
-					</div>
-				)}
+					)}
+
+					{aiResponse && (
+						<div className="mt-4 border-t pt-4">
+							<p className="text-xs uppercase text-violet-400">
+								Joanna
+							</p>
+							<p className="text-violet-600">{aiResponse}</p>
+						</div>
+					)}
 				</div>
 			</NotebookPaper>
 
-			{/* Orb + actions */}
-			<div className="flex flex-col items-center gap-3 flex-shrink-0">
+			<div className="flex flex-col items-center gap-3">
 				<button
-					onPointerDown={isSupported ? startListening : undefined}
-					onPointerUp={isSupported ? stopListening : undefined}
-					onPointerLeave={isSupported ? stopListening : undefined}
-					onContextMenu={(e) => e.preventDefault()}
-					className="relative z-10 flex-shrink-0 select-none touch-none"
-					type="button"
-					aria-label={
-						state === "listening" ? "Release to stop" : "Hold to speak"
-					}
+					onPointerDown={startListening}
+					onPointerUp={stopListening}
+					className="select-none"
 				>
-					<Orb isActive={state === "listening"} size={140} volume={volume} />
+					<Orb
+						isActive={state !== "idle"}
+						size={140}
+						volume={volume}
+					/>
 				</button>
 
-				<p className="text-xs text-stone-400">
-					{state === "idle" && "Hold the orb to speak"}
-					{state === "listening" && "Listening\u2026 release to stop"}
-					{state === "stopped" && transcript && "Hold to continue recording"}
-					{state === "stopped" && !transcript && "Hold to try again"}
-				</p>
-
-				{state === "stopped" && transcript && (
-					<button
-						onClick={resetVoice}
-						className="rounded-full border border-violet-200 px-5 py-2 text-sm font-medium text-stone-500 active:bg-violet-50"
-						style={{ animation: "fade-in-up 0.25s ease-out" }}
-						type="button"
-					>
-						Start Over
-					</button>
-				)}
-
-				{!isSupported && state === "idle" && (
-					<p className="text-center text-xs text-stone-400">
-						Voice not supported in this browser. Please use Chrome or Edge.
-					</p>
+				{state === "idle" && transcript && (
+					<button onClick={resetVoice}>Start Over</button>
 				)}
 			</div>
 		</div>
