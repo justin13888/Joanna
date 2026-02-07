@@ -17,7 +17,7 @@ function NotebookPaper({
 }) {
 	return (
 		<div
-			className={`relative overflow-hidden rounded-2xl border border-violet-200/40 bg-white shadow-sm shadow-violet-200/20 ${className}`}
+			className={`relative overflow-auto rounded-2xl border border-violet-200/40 bg-white shadow-sm shadow-violet-200/20 ${className}`}
 			style={{
 				backgroundImage: `repeating-linear-gradient(
 					transparent,
@@ -56,6 +56,7 @@ export function VoiceScreen() {
 	const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
 	const animFrameRef = useRef<number>(0);
 	const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+	const scrollRef = useRef<HTMLDivElement | null>(null);
 	const stateRef = useRef<VoiceState>("idle");
 
 	stateRef.current = state;
@@ -74,6 +75,12 @@ export function VoiceScreen() {
 					const data = JSON.parse(event.data);
 					if (data.type === "transcript") {
 						setTranscript((prev) => prev + data.text);
+						// Auto-scroll to bottom immediately
+						requestAnimationFrame(() => {
+							if (scrollRef.current) {
+								scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+							}
+						});
 					} else if (data.type === "error") {
 						console.error("[VoiceScreen] Transcription error:", data.message);
 					}
@@ -288,7 +295,7 @@ export function VoiceScreen() {
 		<div className="relative flex h-full flex-col px-4 pt-[52px] pb-3">
 			{/* Transcript paper area */}
 			<NotebookPaper className="mb-3 flex-1 min-h-0">
-				<div className="h-full overflow-y-auto p-4 pl-14">
+				<div ref={scrollRef} className="h-full overflow-y-auto p-4 pl-14">
 					{/* Header */}
 					<div className="mb-2 flex items-center justify-between">
 						<h2 className="font-handwriting text-xl text-violet-400">
