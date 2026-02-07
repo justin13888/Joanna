@@ -17,6 +17,8 @@ export const env = createEnv({
 		// LLM configuration
 		LLM_PROVIDER: z.enum(["openai", "anthropic", "google"]).default("google"),
 		LLM_MODEL: z.string().default("gemini-2.0-flash"),
+		// Google API key for Gemini multimodal (audio/voice)
+		GOOGLE_API_KEY: z.string(),
 		// JWT configuration (minimal - TODO: strengthen for production)
 		JWT_SECRET: z.string().min(32),
 	},
@@ -41,6 +43,7 @@ export const env = createEnv({
 		BACKBOARD_ASSISTANT_ID: process.env.BACKBOARD_ASSISTANT_ID,
 		LLM_PROVIDER: process.env.LLM_PROVIDER,
 		LLM_MODEL: process.env.LLM_MODEL,
+		GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
 		JWT_SECRET: process.env.JWT_SECRET,
 		// NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
 	},

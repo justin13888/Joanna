@@ -21,36 +21,81 @@ body {
 }
 
 @keyframes orb-spin {
-	from { transform: rotate(0deg); }
-	to { transform: rotate(360deg); }
+	from {
+		transform: rotate(0deg);
+	}
+
+	to {
+		transform: rotate(360deg);
+	}
 }
 
 @keyframes orb-spin-reverse {
-	from { transform: rotate(360deg); }
-	to { transform: rotate(0deg); }
+	from {
+		transform: rotate(360deg);
+	}
+
+	to {
+		transform: rotate(0deg);
+	}
 }
 
 @keyframes orb-breathe {
-	0%, 100% { opacity: 0.5; transform: scale(1); }
-	50% { opacity: 0.85; transform: scale(1.06); }
+
+	0%,
+	100% {
+		opacity: 0.5;
+		transform: scale(1);
+	}
+
+	50% {
+		opacity: 0.85;
+		transform: scale(1.06);
+	}
 }
 
 @keyframes fade-in {
-	from { opacity: 0; }
-	to { opacity: 1; }
+	from {
+		opacity: 0;
+	}
+
+	to {
+		opacity: 1;
+	}
 }
 
 @keyframes fade-in-up {
-	from { opacity: 0; transform: translateY(14px); }
-	to { opacity: 1; transform: translateY(0); }
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 @keyframes slide-up {
-	from { opacity: 0; transform: translateY(100%); }
-	to { opacity: 1; transform: translateY(0); }
+	from {
+		opacity: 0;
+		transform: translateY(100%);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 @keyframes wiggle {
-	0%, 100% { transform: rotate(-1deg); }
-	50% { transform: rotate(1deg); }
+
+	0%,
+	100% {
+		transform: rotate(-1deg);
+	}
+
+	50% {
+		transform: rotate(1deg);
+	}
 }
