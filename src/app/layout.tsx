@@ -26,7 +26,7 @@ const geist = Geist({
 
 const patrickHand = Patrick_Hand({
 	subsets: ["latin"],
-	variable: "--font-patrick-hand",
+	variable: "--font-patrick",
 	weight: "400",
 });
 
@@ -35,7 +35,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
 	return (
 		<html className={`${geist.variable} ${patrickHand.variable}`} lang="en">
-			<body className="flex min-h-dvh items-center justify-center bg-neutral-900 text-stone-800 antialiased">
+			<body className="min-h-dvh antialiased">
 				<TRPCReactProvider>{children}</TRPCReactProvider>
 			</body>
 		</html>
