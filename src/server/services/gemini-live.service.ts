@@ -40,18 +40,23 @@ export class GeminiLiveService {
                     console.log("[GeminiLive] Connected");
                 },
                 onmessage: (message) => {
+                    // Log all messages for debugging
+                    console.log("[GeminiLive] Message received:", JSON.stringify(message, null, 2).slice(0, 500));
+
                     // Only output the input transcription (what the user said)
-                    // Ignore model responses - we only want transcription
                     if (message.serverContent?.inputTranscription?.text) {
+                        console.log("[GeminiLive] Transcription:", message.serverContent.inputTranscription.text);
                         callbacks.onTranscript(message.serverContent.inputTranscription.text);
                     }
                 },
                 onerror: (error) => {
                     console.error("[GeminiLive] Error:", error);
+                    console.error("[GeminiLive] Error details:", JSON.stringify(error, null, 2));
                     callbacks.onError(new Error(error.message || "Live API error"));
                 },
                 onclose: (event) => {
-                    console.log("[GeminiLive] Closed:", event?.reason);
+                    console.log("[GeminiLive] Closed - reason:", event?.reason || "unknown");
+                    console.log("[GeminiLive] Close event:", JSON.stringify(event, null, 2));
                     callbacks.onClose();
                 },
             },
