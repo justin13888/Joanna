@@ -6,11 +6,21 @@
  * TL;DR - This is where all the tRPC server stuff is created and plugged in. The pieces you will
  * need to use are documented accordingly near the end.
  */
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
 import { db } from "@/server/db";
+import { env } from "@/env";
+import {
+	AgentService,
+	AuthService,
+	BackboardService,
+	ConversationService,
+	MemoryRetrievalService,
+	MemorySynthesisService,
+} from "@/server/services";
+import { JOANNA_SYSTEM_PROMPT } from "@/server/prompts/journal-assistant";
 
 /**
  * 1. CONTEXT
@@ -24,9 +34,69 @@ import { db } from "@/server/db";
  *
  * @see https://trpc.io/docs/server/context
  */
+
+// Initialize services as singletons
+let backboardService: BackboardService | null = null;
+let authService: AuthService | null = null;
+
+function getBackboardService(): BackboardService {
+	if (!backboardService) {
+		backboardService = new BackboardService({
+			apiKey: env.BACKBOARD_API_KEY,
+			assistantId: env.BACKBOARD_ASSISTANT_ID,
+			llmProvider: env.LLM_PROVIDER,
+			llmModel: env.LLM_MODEL,
+		});
+	}
+	return backboardService;
+}
+
+function getAuthService(): AuthService {
+	if (!authService) {
+		authService = new AuthService(db, env.JWT_SECRET);
+	}
+	return authService;
+}
+
 export const createTRPCContext = async (opts: { headers: Headers }) => {
+	const bb = getBackboardService();
+	const auth = getAuthService();
+
+	// Initialize services with dependency injection
+	const conversationService = new ConversationService(db, bb);
+	const memorySynthesisService = new MemorySynthesisService(bb);
+	const memoryRetrievalService = new MemoryRetrievalService(bb);
+	const agentService = new AgentService(
+		conversationService,
+		memorySynthesisService,
+		memoryRetrievalService,
+		bb,
+	);
+
+	// Extract user from JWT if present
+	let userId: string | null = null;
+	const authHeader = opts.headers.get("authorization");
+	if (authHeader?.startsWith("Bearer ")) {
+		const token = authHeader.slice(7);
+		try {
+			const payload = auth.verifyToken(token);
+			userId = payload.userId;
+		} catch {
+			// Invalid token - will be handled by protected procedure
+		}
+	}
+
 	return {
 		db,
+		userId,
+		services: {
+			backboard: bb,
+			conversation: conversationService,
+			memorySynthesis: memorySynthesisService,
+			memoryRetrieval: memoryRetrievalService,
+			agent: agentService,
+			auth,
+		},
 		...opts,
 	};
 };
@@ -97,6 +167,36 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
 });
 
 /**
+ * Middleware to ensure user is authenticated.
+ */
+const authMiddleware = t.middleware(async ({ ctx, next }) => {
+	if (!ctx.userId) {
+		throw new TRPCError({
+			code: "UNAUTHORIZED",
+			message: "You must be logged in to access this resource",
+		});
+	}
+	return next({
+		ctx: {
+			...ctx,
+			userId: ctx.userId, // Now guaranteed to be non-null
+		},
+	});
+});
+
+/**
+ * Middleware to ensure Backboard assistant is initialized.
+ */
+const backboardMiddleware = t.middleware(async ({ ctx, next }) => {
+	// Ensure assistant is initialized (creates one if needed)
+	await ctx.services.backboard.ensureAssistant({
+		name: "Joanna",
+		systemPrompt: JOANNA_SYSTEM_PROMPT,
+	});
+	return next();
+});
+
+/**
  * Public (unauthenticated) procedure
  *
  * This is the base piece you use to build new queries and mutations on your tRPC API. It does not
@@ -104,3 +204,18 @@ const timingMiddleware = t.middleware(async ({ next, path }) => {
  * are logged in.
  */
 export const publicProcedure = t.procedure.use(timingMiddleware);
+
+/**
+ * Protected procedure - requires authentication
+ */
+export const protectedProcedure = t.procedure
+	.use(timingMiddleware)
+	.use(authMiddleware);
+
+/**
+ * Agent procedure - requires authentication and initialized Backboard assistant
+ */
+export const agentProcedure = t.procedure
+	.use(timingMiddleware)
+	.use(authMiddleware)
+	.use(backboardMiddleware);
