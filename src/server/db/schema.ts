@@ -114,19 +114,3 @@ export const messagesRelations = relations(messages, ({ one }) => ({
 		references: [conversations.id],
 	}),
 }));
-
-// === Legacy posts table (example from create-t3-app) ===
-
-export const posts = createTable(
-	"post",
-	(d) => ({
-		id: d.integer().primaryKey().generatedByDefaultAsIdentity(),
-		name: d.varchar({ length: 256 }),
-		createdAt: d
-			.timestamp({ withTimezone: true })
-			.$defaultFn(() => new Date())
-			.notNull(),
-		updatedAt: d.timestamp({ withTimezone: true }).$onUpdate(() => new Date()),
-	}),
-	(t) => [index("name_idx").on(t.name)],
-);
