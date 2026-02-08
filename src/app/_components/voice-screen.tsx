@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CONTEXT_PROMPTS } from "./dummy-data";
 import { Orb } from "./orb";
 import { api } from "@/trpc/react";
+import { usePersona } from "./persona-context";
 
 type VoiceState = "idle" | "listening" | "processing" | "speaking";
 type InputMode = "voice" | "text";
@@ -90,6 +91,8 @@ interface VoiceScreenProps {
 }
 
 export function VoiceScreen({ conversationId: initialConversationId }: VoiceScreenProps) {
+	const { name: personaName, persona } = usePersona();
+	const isJoe = persona === "joe";
 	const [state, setState] = useState<VoiceState>("idle");
 	const [inputMode, setInputMode] = useState<InputMode>("voice");
 	const [transcript, setTranscript] = useState("");
@@ -393,8 +396,8 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 		<div className="relative flex h-full flex-col px-4 pt-[52px] pb-3">
 			<NotebookPaper className="mb-3 flex-1 min-h-0">
 				<div ref={scrollRef} className="h-full overflow-y-auto p-4 pl-14">
-					<h2 className="mb-2 font-handwriting text-xl text-violet-400">
-						Joanna
+					<h2 className="mb-2 font-handwriting text-xl text-theme-primary-light">
+						{personaName}
 					</h2>
 
 					{state === "idle" && !transcript && (
@@ -413,10 +416,10 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 
 					{aiResponse && (
 						<div className="mt-4 border-t pt-4">
-							<p className="text-xs uppercase text-violet-400">
-								Joanna
+							<p className="text-xs uppercase text-theme-primary-light">
+								{personaName}
 							</p>
-							<p className="text-violet-600">{aiResponse}</p>
+							<p className="text-theme-primary-dark">{aiResponse}</p>
 						</div>
 					)}
 				</div>
@@ -428,7 +431,7 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 					<button
 						onClick={() => setInputMode("voice")}
 						className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${inputMode === "voice"
-							? "bg-white text-violet-600 shadow-sm"
+							? "bg-white text-theme-primary-dark shadow-sm"
 							: "text-stone-500 hover:text-stone-700"
 							}`}
 					>
@@ -437,7 +440,7 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 					<button
 						onClick={() => setInputMode("text")}
 						className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${inputMode === "text"
-							? "bg-white text-violet-600 shadow-sm"
+							? "bg-white text-theme-primary-dark shadow-sm"
 							: "text-stone-500 hover:text-stone-700"
 							}`}
 					>
@@ -474,13 +477,13 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 								onChange={(e) => setTextInput(e.target.value)}
 								onKeyDown={(e) => e.key === "Enter" && submitTextInput()}
 								placeholder="Type your message..."
-								className="flex-1 rounded-xl border border-violet-200 bg-white px-4 py-3 text-sm text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-violet-300"
+								className="flex-1 rounded-xl border border-theme-border bg-white px-4 py-3 text-sm text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-theme-primary-lighter"
 								disabled={state !== "idle"}
 							/>
 							<button
 								onClick={submitTextInput}
 								disabled={!textInput.trim() || state !== "idle"}
-								className="rounded-xl bg-violet-500 px-4 py-3 text-sm font-medium text-white transition-all hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed"
+								className="rounded-xl bg-theme-primary px-4 py-3 text-sm font-medium text-white transition-all hover:bg-theme-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								Send
 							</button>
@@ -496,7 +499,7 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 				{state === "idle" && transcript && (
 					<button
 						onClick={resetVoice}
-						className="rounded-full border border-violet-200 px-4 py-1.5 text-sm text-stone-500 hover:bg-violet-50"
+						className="rounded-full border border-theme-border px-4 py-1.5 text-sm text-stone-500 hover:bg-theme-bg-hover"
 					>
 						Start Over
 					</button>
@@ -524,7 +527,7 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 							<button
 								onClick={() => setUseCurrentTime(true)}
 								className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all ${useCurrentTime
-									? "bg-white text-violet-600 shadow-sm"
+									? "bg-white text-theme-primary-dark shadow-sm"
 									: "text-stone-500 hover:text-stone-700"
 									}`}
 							>
@@ -533,7 +536,7 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 							<button
 								onClick={() => setUseCurrentTime(false)}
 								className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all ${!useCurrentTime
-									? "bg-white text-violet-600 shadow-sm"
+									? "bg-white text-theme-primary-dark shadow-sm"
 									: "text-stone-500 hover:text-stone-700"
 									}`}
 							>
@@ -550,7 +553,7 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 								type="datetime-local"
 								value={manualTimestamp}
 								onChange={(e) => setManualTimestamp(e.target.value)}
-								className="w-full rounded-lg border border-violet-200 px-2 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
+								className="w-full rounded-lg border border-theme-border px-2 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-theme-primary-lighter"
 							/>
 						)}
 
@@ -569,7 +572,7 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 							height="18"
 							viewBox="0 0 24 24"
 							fill="none"
-							stroke="rgb(167 139 250)"
+							stroke="rgb(var(--theme-primary-light))"
 							strokeWidth="2"
 							strokeLinecap="round"
 							strokeLinejoin="round"

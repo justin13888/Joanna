@@ -7,6 +7,19 @@
 		"Segoe UI Symbol", "Noto Color Emoji";
 	--font-handwriting: var(--font-patrick), "Comic Sans MS", cursive;
 	--font-patrick: var(--font-patrick), cursive;
+
+	/* Map theme colors to CSS variables */
+	--color-theme-primary: rgb(var(--theme-primary));
+	--color-theme-primary-light: rgb(var(--theme-primary-light));
+	--color-theme-primary-lighter: rgb(var(--theme-primary-lighter));
+	--color-theme-primary-lightest: rgb(var(--theme-primary-lightest));
+	--color-theme-primary-dark: rgb(var(--theme-primary-dark));
+
+	--color-theme-accent: rgb(var(--theme-accent));
+	--color-theme-accent-hover: rgb(var(--theme-accent-hover));
+	--color-theme-border: rgb(var(--theme-border));
+	--color-theme-ring: rgb(var(--theme-ring));
+	--color-theme-bg-hover: rgb(var(--theme-bg-hover));
 }
 
 * {
@@ -16,10 +29,97 @@
 
 :root {
 	--safe-bottom: env(safe-area-inset-bottom, 0px);
+
+	/* ── Theme Color Palette (Joanna - Purple) ── */
+	--theme-primary: 139 92 246;
+	/* violet-500 */
+	--theme-primary-light: 167 139 250;
+	/* violet-400 */
+	--theme-primary-lighter: 196 181 253;
+	/* violet-300 */
+	--theme-primary-lightest: 237 233 254;
+	/* violet-100 */
+	--theme-primary-dark: 124 58 237;
+	/* violet-600 */
+
+	/* Accent colors for UI elements */
+	--theme-accent: 139 92 246;
+	--theme-accent-hover: 124 58 237;
+	--theme-border: 196 181 253;
+	--theme-ring: 196 181 253;
+	--theme-bg-hover: 245 243 255;
+	/* violet-50 */
 }
 
 body {
 	background-color: #171717;
+}
+
+/* ─── Joe Theme (Green) ─── */
+.theme-joe {
+	--theme-primary: 34 197 94;
+	/* green-500 */
+	--theme-primary-light: 74 222 128;
+	/* green-400 */
+	--theme-primary-lighter: 134 239 172;
+	/* green-300 */
+	--theme-primary-lightest: 220 252 231;
+	/* green-100 */
+	--theme-primary-dark: 22 163 74;
+	/* green-600 */
+
+	--theme-accent: 34 197 94;
+	--theme-accent-hover: 22 163 74;
+	--theme-border: 134 239 172;
+	--theme-ring: 134 239 172;
+	--theme-bg-hover: 240 253 244;
+	/* green-50 */
+}
+
+.theme-joe .diary-bg {
+	background: radial-gradient(ellipse at 50% 40%,
+			#e4f4ec 0%,
+			#dceee4 40%,
+			#cde2d8 80%,
+			#c2dbcf 100%),
+		#dceee4;
+}
+
+.theme-joe .notebook-lines {
+	background-image: repeating-linear-gradient(transparent,
+			transparent 35px,
+			#c4dbc8 35px,
+			#c4dbc8 36px);
+}
+
+.theme-joe .book-spine {
+	background: linear-gradient(90deg,
+			#b9d4c5 0%,
+			#d0e4d8 30%,
+			#d6eadd 50%,
+			#d0e4d8 70%,
+			#b9d4c5 100%);
+}
+
+.theme-joe .spiral-coil {
+	background-image: linear-gradient(180deg,
+			#a4c6b0 0%,
+			#7ca68a 40%,
+			#62906e 100%),
+		linear-gradient(180deg, #cce4d4 0%, #98c0a8 50%, #6e9a7a 100%);
+}
+
+/* Override violet scrollbar to green */
+.theme-joe * {
+	scrollbar-color: rgb(134 239 172 / 0.3) transparent;
+}
+
+.theme-joe .notebook-lines::-webkit-scrollbar-thumb {
+	background: #b8d6c4;
+}
+
+.theme-joe .notebook-lines::-webkit-scrollbar-thumb:hover {
+	background: #98be98;
 }
 
 /* ─── Orb animations ─── */
@@ -28,6 +128,7 @@ body {
 	from {
 		transform: rotate(0deg);
 	}
+
 	to {
 		transform: rotate(360deg);
 	}
@@ -37,17 +138,20 @@ body {
 	from {
 		transform: rotate(360deg);
 	}
+
 	to {
 		transform: rotate(0deg);
 	}
 }
 
 @keyframes orb-breathe {
+
 	0%,
 	100% {
 		opacity: 0.5;
 		transform: scale(1);
 	}
+
 	50% {
 		opacity: 0.85;
 		transform: scale(1.06);
@@ -61,6 +165,7 @@ body {
 		opacity: 0;
 		transform: translateY(14px);
 	}
+
 	to {
 		opacity: 1;
 		transform: translateY(0);
@@ -72,6 +177,7 @@ body {
 		opacity: 0;
 		transform: translateY(100%);
 	}
+
 	to {
 		opacity: 1;
 		transform: translateY(0);
@@ -81,41 +187,95 @@ body {
 /* ─── Writing / handwriting animations ─── */
 
 @keyframes wiggle {
+
 	0%,
 	100% {
 		transform: rotate(-1deg);
 	}
+
 	50% {
 		transform: rotate(1deg);
 	}
 }
 
 @keyframes pencil-write {
-	0%   { transform: translate(0, 0) rotate(-3deg); }
-	6%   { transform: translate(2px, 0) rotate(0deg); }
-	12%  { transform: translate(3px, -1px) rotate(-5deg); }
-	18%  { transform: translate(5px, 0) rotate(1deg); }
-	24%  { transform: translate(4px, -3px) rotate(4deg); }
-	30%  { transform: translate(6px, 0) rotate(-2deg); }
-	36%  { transform: translate(8px, -1px) rotate(-6deg); }
-	42%  { transform: translate(7px, -3px) rotate(2deg); }
-	48%  { transform: translate(5px, 0) rotate(-1deg); }
-	54%  { transform: translate(3px, -1px) rotate(-5deg); }
-	60%  { transform: translate(1px, -4px) rotate(6deg); }
-	68%  { transform: translate(0, 0) rotate(-2deg); }
-	74%  { transform: translate(2px, -1px) rotate(1deg); }
-	80%  { transform: translate(4px, 0) rotate(-5deg); }
-	86%  { transform: translate(3px, -2px) rotate(2deg); }
-	92%  { transform: translate(1px, -3px) rotate(5deg); }
-	100% { transform: translate(0, 0) rotate(-3deg); }
+	0% {
+		transform: translate(0, 0) rotate(-3deg);
+	}
+
+	6% {
+		transform: translate(2px, 0) rotate(0deg);
+	}
+
+	12% {
+		transform: translate(3px, -1px) rotate(-5deg);
+	}
+
+	18% {
+		transform: translate(5px, 0) rotate(1deg);
+	}
+
+	24% {
+		transform: translate(4px, -3px) rotate(4deg);
+	}
+
+	30% {
+		transform: translate(6px, 0) rotate(-2deg);
+	}
+
+	36% {
+		transform: translate(8px, -1px) rotate(-6deg);
+	}
+
+	42% {
+		transform: translate(7px, -3px) rotate(2deg);
+	}
+
+	48% {
+		transform: translate(5px, 0) rotate(-1deg);
+	}
+
+	54% {
+		transform: translate(3px, -1px) rotate(-5deg);
+	}
+
+	60% {
+		transform: translate(1px, -4px) rotate(6deg);
+	}
+
+	68% {
+		transform: translate(0, 0) rotate(-2deg);
+	}
+
+	74% {
+		transform: translate(2px, -1px) rotate(1deg);
+	}
+
+	80% {
+		transform: translate(4px, 0) rotate(-5deg);
+	}
+
+	86% {
+		transform: translate(3px, -2px) rotate(2deg);
+	}
+
+	92% {
+		transform: translate(1px, -3px) rotate(5deg);
+	}
+
+	100% {
+		transform: translate(0, 0) rotate(-3deg);
+	}
 }
 
 @keyframes pencil-dot {
+
 	0%,
 	100% {
 		opacity: 0.9;
 		transform: scale(1);
 	}
+
 	50% {
 		opacity: 0.4;
 		transform: scale(0.6);
@@ -128,13 +288,11 @@ body {
 
 /* ─── Background ─── */
 .diary-bg {
-	background: radial-gradient(
-			ellipse at 50% 40%,
+	background: radial-gradient(ellipse at 50% 40%,
 			#ece4f4 0%,
 			#e4dced 40%,
 			#d8cde2 80%,
-			#cfc2db 100%
-		),
+			#cfc2db 100%),
 		#e4dced;
 }
 
@@ -165,39 +323,33 @@ body {
 	inset: 0;
 	pointer-events: none;
 	z-index: 2;
-	background: linear-gradient(
-		145deg,
-		rgba(255, 255, 252, 0.7) 0%,
-		rgba(255, 253, 248, 0.3) 25%,
-		rgba(245, 238, 228, 0.05) 50%,
-		rgba(230, 220, 208, 0.15) 75%,
-		rgba(220, 210, 198, 0.3) 100%
-	);
+	background: linear-gradient(145deg,
+			rgba(255, 255, 252, 0.7) 0%,
+			rgba(255, 253, 248, 0.3) 25%,
+			rgba(245, 238, 228, 0.05) 50%,
+			rgba(230, 220, 208, 0.15) 75%,
+			rgba(220, 210, 198, 0.3) 100%);
 	border-radius: inherit;
 }
 
 /* ─── Notebook lined paper for right page ─── */
 .notebook-lines {
-	background-image: repeating-linear-gradient(
-		transparent,
-		transparent 35px,
-		#cdc4db 35px,
-		#cdc4db 36px
-	);
+	background-image: repeating-linear-gradient(transparent,
+			transparent 35px,
+			#cdc4db 35px,
+			#cdc4db 36px);
 	line-height: 36px;
 }
 
 /* ─── Spine / gutter shadow ─── */
 .book-spine {
 	position: relative;
-	background: linear-gradient(
-		90deg,
-		#c5b9d4 0%,
-		#d8d0e4 30%,
-		#ddd6ea 50%,
-		#d8d0e4 70%,
-		#c5b9d4 100%
-	);
+	background: linear-gradient(90deg,
+			#c5b9d4 0%,
+			#d8d0e4 30%,
+			#ddd6ea 50%,
+			#d8d0e4 70%,
+			#c5b9d4 100%);
 }
 
 /* Deep gutter crease on both sides of the spine */
@@ -214,22 +366,18 @@ body {
 
 .book-spine::before {
 	left: -18px;
-	background: linear-gradient(
-		to left,
-		rgba(80, 60, 100, 0.18) 0%,
-		rgba(80, 60, 100, 0.06) 40%,
-		transparent 100%
-	);
+	background: linear-gradient(to left,
+			rgba(80, 60, 100, 0.18) 0%,
+			rgba(80, 60, 100, 0.06) 40%,
+			transparent 100%);
 }
 
 .book-spine::after {
 	right: -18px;
-	background: linear-gradient(
-		to right,
-		rgba(80, 60, 100, 0.18) 0%,
-		rgba(80, 60, 100, 0.06) 40%,
-		transparent 100%
-	);
+	background: linear-gradient(to right,
+			rgba(80, 60, 100, 0.18) 0%,
+			rgba(80, 60, 100, 0.06) 40%,
+			transparent 100%);
 }
 
 /* ─── Spiral coil ─── */
@@ -240,12 +388,10 @@ body {
 	border-radius: 50%;
 	background: transparent;
 	position: relative;
-	background-image: linear-gradient(
-			180deg,
+	background-image: linear-gradient(180deg,
 			#b0a4c6 0%,
 			#8a7ca6 40%,
-			#6e6290 100%
-		),
+			#6e6290 100%),
 		linear-gradient(180deg, #d4cce4 0%, #a898c0 50%, #7a6e9a 100%);
 	background-origin: border-box;
 	background-clip: padding-box, border-box;
@@ -264,14 +410,12 @@ body {
 	left: 8px;
 	right: 8px;
 	height: 5px;
-	background: linear-gradient(
-		90deg,
-		transparent 0%,
-		rgba(230, 224, 244, 0.8) 30%,
-		rgba(255, 255, 255, 0.6) 50%,
-		rgba(230, 224, 244, 0.8) 70%,
-		transparent 100%
-	);
+	background: linear-gradient(90deg,
+			transparent 0%,
+			rgba(230, 224, 244, 0.8) 30%,
+			rgba(255, 255, 255, 0.6) 50%,
+			rgba(230, 224, 244, 0.8) 70%,
+			transparent 100%);
 	border-radius: 50%;
 }
 
@@ -283,14 +427,12 @@ body {
 	left: 10px;
 	right: 10px;
 	height: 4px;
-	background: linear-gradient(
-		90deg,
-		transparent 0%,
-		rgba(80, 60, 110, 0.25) 30%,
-		rgba(80, 60, 110, 0.35) 50%,
-		rgba(80, 60, 110, 0.25) 70%,
-		transparent 100%
-	);
+	background: linear-gradient(90deg,
+			transparent 0%,
+			rgba(80, 60, 110, 0.25) 30%,
+			rgba(80, 60, 110, 0.35) 50%,
+			rgba(80, 60, 110, 0.25) 70%,
+			transparent 100%);
 	border-radius: 50%;
 }
 
@@ -346,14 +488,12 @@ body {
 .book-container {
 	transform: rotateX(2deg) rotateY(-1deg);
 	transition: transform 0.4s ease;
-	filter: drop-shadow(0 20px 40px rgba(60, 40, 90, 0.2))
-		drop-shadow(0 8px 16px rgba(60, 40, 90, 0.15));
+	filter: drop-shadow(0 20px 40px rgba(60, 40, 90, 0.2)) drop-shadow(0 8px 16px rgba(60, 40, 90, 0.15));
 }
 
 .book-container:hover {
 	transform: rotateX(1deg) rotateY(0deg) translateY(-4px);
-	filter: drop-shadow(0 28px 50px rgba(60, 40, 90, 0.22))
-		drop-shadow(0 12px 20px rgba(60, 40, 90, 0.16));
+	filter: drop-shadow(0 28px 50px rgba(60, 40, 90, 0.22)) drop-shadow(0 12px 20px rgba(60, 40, 90, 0.16));
 }
 
 /* ─── Month tabs - 3D depth ─── */
@@ -385,9 +525,11 @@ body {
 	0% {
 		transform: rotateY(0deg);
 	}
+
 	50% {
 		transform: rotateY(-90deg);
 	}
+
 	100% {
 		transform: rotateY(-180deg);
 	}
@@ -397,9 +539,11 @@ body {
 	0% {
 		transform: rotateY(0deg);
 	}
+
 	50% {
 		transform: rotateY(90deg);
 	}
+
 	100% {
 		transform: rotateY(180deg);
 	}
@@ -410,6 +554,7 @@ body {
 	0% {
 		opacity: 0;
 	}
+
 	100% {
 		opacity: 1;
 	}

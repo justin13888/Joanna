@@ -1,6 +1,7 @@
 "use client";
 
 import { VoiceScreen } from "./voice-screen";
+import { PersonaToggle } from "./persona-toggle";
 
 interface AppShellProps {
 	conversationId?: string;
@@ -14,6 +15,11 @@ export function AppShell({ conversationId }: AppShellProps) {
 				<div className="h-[34px] w-[126px] rounded-full bg-black shadow-[0_0_0_2px_rgb(0_0_0)]" />
 			</div>
 
+			{/* ── Persona Toggle (top-right) ── */}
+			<div className="absolute top-4 right-4 z-50">
+				<PersonaToggle />
+			</div>
+
 			{/* ── App content ── */}
 			<VoiceScreen conversationId={conversationId} />
 
@@ -24,3 +30,4 @@ export function AppShell({ conversationId }: AppShellProps) {
 		</div>
 	);
 }
+
