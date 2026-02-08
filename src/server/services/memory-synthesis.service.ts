@@ -60,6 +60,7 @@ Analyze the user's message and extract memories, follow-up questions, and elabor
             // Create a temporary thread for synthesis (we don't want to pollute the main thread)
             // In production, this could use a separate API call or local LLM
             const threadId = await this.backboardService.createThread();
+            console.log("Created thread for synthesis:", threadId);
 
             try {
                 const response = await this.backboardService.addMessage({
@@ -67,11 +68,16 @@ Analyze the user's message and extract memories, follow-up questions, and elabor
                     content: synthesisPrompt,
                     memoryMode: "off", // Don't store synthesis in memory
                 });
+                console.log("Synthesis response:", response);
 
                 // Parse the JSON response
                 const parsed = this.parseResponse(response.content);
+                if (!parsed) {
+                    return this.getEmptyResult();
+                }
                 return parsed;
             } finally {
+                console.log("CLEAN UP: Deleting thread for synthesis:", threadId);
                 // Clean up the temporary thread
                 await this.backboardService.deleteThread(threadId).catch(() => {
                     // Ignore cleanup errors
@@ -114,13 +120,13 @@ Analyze the user's message and extract memories, follow-up questions, and elabor
     /**
      * Parse the LLM response into a SynthesisResult.
      */
-    private parseResponse(content: string): SynthesisResult {
+    private parseResponse(content: string): SynthesisResult | null {
         try {
             // Try to extract JSON from the response
             const jsonMatch = content.match(/\{[\s\S]*\}/);
             if (!jsonMatch) {
-                console.warn("No JSON found in synthesis response");
-                return this.getEmptyResult();
+                console.warn("No JSON found in synthesis response", { content });
+                return null;
             }
 
             const parsed: SynthesisResponse = JSON.parse(jsonMatch[0]);
@@ -146,18 +152,18 @@ Analyze the user's message and extract memories, follow-up questions, and elabor
                 .map((m) => ({
                     content: m.content,
                     category: m.category as MemoryCategory,
-                    confidence: Math.max(0, Math.min(1, m.confidence || 0.5)),
+                    confidence: Math.round(Math.max(0, Math.min(1, m.confidence || 0.5)) * 100),
                 }));
 
             return {
                 extractedMemories,
                 followUpQuestions: parsed.followUpQuestions || [],
                 elaborationTopics: parsed.elaborationTopics || [],
-                confidence: Math.max(0, Math.min(1, parsed.confidence || 0.5)),
+                confidence: Math.round(Math.max(0, Math.min(1, parsed.confidence || 0.5)) * 100),
             };
         } catch (error) {
-            console.warn("Failed to parse synthesis response:", error);
-            return this.getEmptyResult();
+            console.warn("Failed to parse synthesis response:", error, { content });
+            return null;
         }
     }
 

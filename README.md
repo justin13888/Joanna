@@ -10,5 +10,6 @@ pnpm install
 
 podman compose up -d
 pnpm db:push
+pnpm db:seed
 pnpm dev
 ```

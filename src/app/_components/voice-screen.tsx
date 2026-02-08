@@ -306,7 +306,7 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 
 		processorRef.current?.disconnect();
 		sourceRef.current?.disconnect();
-		streamRef.current?.getTracks().forEach((t) => t.stop());
+		streamRef.current?.getTracks().forEach((t) => { t.stop(); });
 		await audioCtxRef.current?.close();
 
 		setState("processing");
@@ -328,50 +328,63 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 
 	/* ── Submit text input ── */
 	const submitTextInput = async () => {
-		if (!textInput.trim()) return;
+		const text = textInput.trim();
+		if (!text) return;
 
-		setTranscript(textInput);
+		setTranscript(text);
 		setTextInput("");
 		setState("processing");
-
-		await new Promise((r) => setTimeout(r, 300));
-		await generateSpeechFromText(textInput);
-	};
-
-	/* ── TTS for text input ── */
-	const generateSpeechFromText = async (text: string) => {
-		if (!text.trim()) {
-			setState("idle");
-			return;
-		}
-
-		setState("speaking");
 		setAiResponse("Thinking...");
 
 		try {
-			const res = await fetch("/api/tts", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ text: `You said: ${text}` }),
+			// Create conversation if we don't have one
+			let conversationId = currentConversationId;
+			if (!conversationId) {
+				const result = await createConversation.mutateAsync({});
+				conversationId = result.id;
+				setCurrentConversationId(conversationId);
+				// Update URL without triggering navigation/remount
+				window.history.replaceState(null, "", `/conversation/${conversationId}`);
+			}
+
+			// Send the transcribed message to the agent
+			const response = await sendMessage.mutateAsync({
+				conversationId,
+				content: text,
 			});
 
-			const blob = await res.blob();
-			const url = URL.createObjectURL(blob);
-			const audio = new Audio(url);
+			// Display the AI response
+			setAiResponse(response.content);
+			setState("speaking");
 
-			audioPlayerRef.current = audio;
-			setAiResponse(`"${text}"`);
+			// Optionally use TTS for the response
+			try {
+				const ttsRes = await fetch("/api/tts", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ text: response.content }),
+				});
 
-			audio.onended = () => {
-				URL.revokeObjectURL(url);
+				const blob = await ttsRes.blob();
+				const url = URL.createObjectURL(blob);
+				const audio = new Audio(url);
+
+				audioPlayerRef.current = audio;
+
+				audio.onended = () => {
+					URL.revokeObjectURL(url);
+					setState("idle");
+				};
+
+				audio.play();
+			} catch {
+				// TTS failed, just stay in idle state
 				setState("idle");
-			};
-
-			audio.play();
+			}
 		} catch (error) {
-			console.error("[VoiceScreen] TTS error:", error);
-			setAiResponse("Failed to generate speech");
-			setTimeout(() => setState("idle"), 2000);
+			console.error("Error processing text input:", error);
+			setAiResponse("Sorry, something went wrong. Please try again.");
+			setState("idle");
 		}
 	};
 
@@ -415,8 +428,8 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 					<button
 						onClick={() => setInputMode("voice")}
 						className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${inputMode === "voice"
-								? "bg-white text-violet-600 shadow-sm"
-								: "text-stone-500 hover:text-stone-700"
+							? "bg-white text-violet-600 shadow-sm"
+							: "text-stone-500 hover:text-stone-700"
 							}`}
 					>
 						🎤 Voice
@@ -424,8 +437,8 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 					<button
 						onClick={() => setInputMode("text")}
 						className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${inputMode === "text"
-								? "bg-white text-violet-600 shadow-sm"
-								: "text-stone-500 hover:text-stone-700"
+							? "bg-white text-violet-600 shadow-sm"
+							: "text-stone-500 hover:text-stone-700"
 							}`}
 					>
 						⌨️ Text

@@ -67,7 +67,7 @@ export interface SynthesisResult {
     /** Topics that could benefit from elaboration */
     elaborationTopics: string[];
 
-    /** Confidence score for the extraction (0-1) */
+    /** Confidence score for the extraction (0-100) */
     confidence: number;
 }
 

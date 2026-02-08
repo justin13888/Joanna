@@ -12,6 +12,7 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:push": "drizzle-kit push",
 		"db:studio": "drizzle-kit studio",
+		"db:seed": "node --import tsx --env-file=.env src/scripts/seed-dummy-user.ts",
 		"dev": "node --import tsx --env-file=.env src/server/server.ts",
 		"dev:next": "next dev --turbo",
 		"preview": "next build && next start",

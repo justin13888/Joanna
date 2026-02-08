@@ -15,6 +15,7 @@ import { env } from "@/env";
 import {
 	AgentService,
 	AuthService,
+	BackboardService,
 	ConversationService,
 	MemoryRetrievalService,
 	MemorySynthesisService,
@@ -42,17 +43,24 @@ let authService: AuthService | null = null;
 
 function getBackboardService(): IBackboardService {
 	if (!backboardService) {
-		// Use MockBackboardService with real Gemini LLM for responses
-		// while keeping in-memory thread/memory storage
-		const llmConfig: LLMConfig = {
-			provider: "google",
-			model: "gemini-2.0-flash",
-			apiKey: env.GOOGLE_API_KEY,
-		};
+		// // Use MockBackboardService with real Gemini LLM for responses
+		// // while keeping in-memory thread/memory storage
+		// const llmConfig: LLMConfig = {
+		// 	provider: env.LLM_PROVIDER,
+		// 	model: env.LLM_MODEL,
+		// 	apiKey: env.GOOGLE_API_KEY,
+		// };
 
-		backboardService = new MockBackboardService({
+		// backboardService = new MockBackboardService({
+		// 	assistantId: env.BACKBOARD_ASSISTANT_ID,
+		// 	llm: llmConfig,
+		// });
+
+		backboardService = new BackboardService({
+			apiKey: env.BACKBOARD_API_KEY,
 			assistantId: env.BACKBOARD_ASSISTANT_ID,
-			llm: llmConfig,
+			llmProvider: "google",
+			llmModel: "gemini-2.0-flash-lite-001",
 		});
 	}
 	return backboardService;

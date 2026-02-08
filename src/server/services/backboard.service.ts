@@ -10,6 +10,8 @@ import {
     type MessageResponse,
     type Memory,
     type MemoryStats as BackboardMemoryStats,
+    type AddMemoryOptions,
+    type AddMessageOptions,
 } from "backboard-sdk";
 import type {
     AssistantConfig,
@@ -89,6 +91,16 @@ export interface IBackboardService {
      * Delete a specific memory.
      */
     deleteMemory(memoryId: string): Promise<void>;
+
+    /**
+     * Manually create a new memory.
+     */
+    createMemory(content: string, metadata?: Record<string, any>): Promise<Memory>;
+
+    /**
+     * Get debug state of the service.
+     */
+    getDebugState(): Record<string, any>;
 }
 
 export class BackboardService implements IBackboardService {
@@ -177,13 +189,18 @@ export class BackboardService implements IBackboardService {
         memoryMode: MemoryMode;
         systemPrompt?: string;
     }): Promise<BackboardAssistantResponse> {
-        const response = await this.client.addMessage(params.threadId, {
+
+        const options: AddMessageOptions = {
             content: params.content,
             llmProvider: this.llmProvider,
             modelName: this.llmModel,
             memory: params.memoryMode,
             stream: false,
-        });
+        }
+
+        console.log(`Adding message to thread ${params.threadId}: ${JSON.stringify(options, null, 2)}`);
+
+        const response = await this.client.addMessage(params.threadId, options);
 
         // When stream is false, we get a MessageResponse
         const messageResponse = response as MessageResponse;
@@ -247,5 +264,25 @@ export class BackboardService implements IBackboardService {
     async deleteMemory(memoryId: string): Promise<void> {
         const assistantId = this.getAssistantId();
         await this.client.deleteMemory(assistantId, memoryId);
+    }
+
+    async createMemory(content: string, metadata?: Record<string, any>): Promise<Memory> {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const client = this.client;
+        const assistantId = this.getAssistantId();
+        return await client.addMemory(assistantId, {
+            content,
+            metadata,
+        });
+    }
+
+    getDebugState(): Record<string, any> {
+        return {
+            type: "RealBackboardService",
+            assistantId: this.assistantId,
+            llmProvider: this.llmProvider,
+            llmModel: this.llmModel,
+            info: "Real Backboard service does not expose internal memory state.",
+        };
     }
 }

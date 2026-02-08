@@ -40,6 +40,7 @@ export class AgentService {
         userMessage: string;
     }): Promise<AgentResponse> {
         const { conversationId, userId, userMessage } = params;
+        console.log("[Agent] Starting processMessage", { conversationId, userId });
 
         // Step 1: Get conversation context
         const backboardThreadId = await this.conversationService.getBackboardThreadId(
@@ -55,10 +56,17 @@ export class AgentService {
             10,
         );
 
+        console.log("[Agent] Got recent context", recentContext.length);
+
         // Step 2: Synthesize - identify new memories and follow-up questions
         const synthesisResult = await this.memorySynthesisService.synthesize({
             userMessage,
             conversationContext: recentContext,
+        });
+
+        console.log("[Agent] Synthesis complete", {
+            memories: synthesisResult.extractedMemories.length,
+            followUps: synthesisResult.followUpQuestions.length
         });
 
         // Step 3: Retrieve sparse memories of things to cover/elaborate
@@ -68,8 +76,26 @@ export class AgentService {
             limit: 5,
         });
 
-        // Step 4 & 5: Send message to Backboard (stores memories via 'Auto' mode)
-        // and get the assistant's planned response
+        console.log("[Agent] Retrieval complete", { retrieved: retrievedContext.length });
+
+        // Step 4: Store new memories in current step
+        // Explicitly store synthesized memories instead of relying on "Auto" mode
+        if (synthesisResult.extractedMemories.length > 0) {
+            console.log(`[Agent] Storing ${synthesisResult.extractedMemories.length} synthesized memories`);
+            await Promise.all(
+                synthesisResult.extractedMemories.map((mem) =>
+                    this.backboardService.createMemory(mem.content, {
+                        category: mem.category,
+                        confidence: mem.confidence,
+                        source: "synthesis",
+                        timestamp: new Date().toISOString(),
+                    })
+                )
+            );
+        }
+        console.log("[Agent] Memory storage complete");
+
+        // Step 5: Send message to Backboard and get response
         const augmentedPrompt = this.buildAugmentedPrompt(
             userMessage,
             synthesisResult,
@@ -79,9 +105,10 @@ export class AgentService {
         const response = await this.backboardService.addMessage({
             threadId: backboardThreadId,
             content: augmentedPrompt,
-            memoryMode: "Auto", // This stores new memories automatically
+            memoryMode: "Readonly", // Use existing memories but don't auto-store the user message (we did it explicitly above)
             systemPrompt: JOANNA_SYSTEM_PROMPT,
         });
+        console.log("[Agent] Received response from Backboard");
 
         // Store messages locally for quick access
         await this.conversationService.addMessage({
@@ -96,12 +123,14 @@ export class AgentService {
                 })),
             },
         });
+        console.log("[Agent] Stored user message locally");
 
         await this.conversationService.addMessage({
             conversationId,
             role: "assistant",
             content: response.content,
         });
+        console.log("[Agent] Stored assistant response locally");
 
         // Build planning state for debugging/logging
         const planningState: AgentPlanningState = {
@@ -110,6 +139,8 @@ export class AgentService {
             retrievedContext,
             responseStrategy: this.inferResponseStrategy(synthesisResult, retrievedContext),
         };
+
+        console.log("[Agent] Process complete, returning response");
 
         return {
             content: response.content,
@@ -150,6 +181,7 @@ export class AgentService {
             role: "assistant",
             content: response.content,
         });
+        console.log("[Agent] Stored assistant response locally");
 
         const planningState: AgentPlanningState = {
             extractedMemories: [],
