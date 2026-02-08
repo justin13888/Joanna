@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CONTEXT_PROMPTS } from "./dummy-data";
 import { Orb } from "./orb";
+import { api } from "@/trpc/react";
+import { usePersona } from "./persona-context";
 
 type VoiceState = "idle" | "listening" | "processing" | "speaking";
+type InputMode = "voice" | "text";
 
 /* ─── Notebook paper component ─── */
 
@@ -83,13 +86,28 @@ function WritingPencil() {
 
 /* ─── Main component ─── */
 
-export function VoiceScreen() {
+interface VoiceScreenProps {
+	conversationId?: string;
+}
+
+export function VoiceScreen({ conversationId: initialConversationId }: VoiceScreenProps) {
+	const { name: personaName, persona } = usePersona();
+	const isJoe = persona === "joe";
 	const [state, setState] = useState<VoiceState>("idle");
+	const [inputMode, setInputMode] = useState<InputMode>("voice");
 	const [transcript, setTranscript] = useState("");
+	const [textInput, setTextInput] = useState("");
 	const [interimText, setInterimText] = useState("");
 	const [aiResponse, setAiResponse] = useState("");
 	const [volume, setVolume] = useState(0);
 	const [contextPrompt, setContextPrompt] = useState(CONTEXT_PROMPTS[0]);
+	const [currentConversationId, setCurrentConversationId] = useState<string | null>(
+		initialConversationId ?? null
+	);
+
+	// tRPC mutations for conversation and message APIs
+	const createConversation = api.conversation.create.useMutation();
+	const sendMessage = api.message.send.useMutation();
 
 	// Debug: timestamp override
 	const [showTimePicker, setShowTimePicker] = useState(false);
@@ -116,6 +134,7 @@ export function VoiceScreen() {
 	const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 	const scrollRef = useRef<HTMLDivElement | null>(null);
 	const stateRef = useRef<VoiceState>("idle");
+	const processTranscriptRef = useRef<(() => Promise<void>) | null>(null);
 
 	stateRef.current = state;
 
@@ -154,46 +173,133 @@ export function VoiceScreen() {
 		setInterimText("");
 		setAiResponse("");
 
-		const stream = await navigator.mediaDevices.getUserMedia({
-			audio: {
-				sampleRate: 16000,
-				channelCount: 1,
-				echoCancellation: true,
-				noiseSuppression: true,
-			},
-		});
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({
+				audio: {
+					echoCancellation: true,
+					noiseSuppression: true,
+				},
+			});
 
-		streamRef.current = stream;
+			streamRef.current = stream;
 
-		const ctx = new AudioContext({ sampleRate: 16000 });
-		audioCtxRef.current = ctx;
+			// Create AudioContext without sampleRate constraint for Firefox compatibility
+			const ctx = new AudioContext();
+			audioCtxRef.current = ctx;
 
-		const source = ctx.createMediaStreamSource(stream);
-		sourceRef.current = source;
+			const source = ctx.createMediaStreamSource(stream);
+			sourceRef.current = source;
 
-		const processor = ctx.createScriptProcessor(4096, 1, 1);
-		processorRef.current = processor;
+			const processor = ctx.createScriptProcessor(4096, 1, 1);
+			processorRef.current = processor;
 
-		processor.onaudioprocess = (e) => {
-			if (stateRef.current !== "listening") return;
-			if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+			// Target sample rate for Gemini API
+			const targetSampleRate = 16000;
+			const nativeSampleRate = ctx.sampleRate;
 
-			const input = e.inputBuffer.getChannelData(0);
-			const pcm = new Int16Array(input.length);
+			processor.onaudioprocess = (e) => {
+				if (stateRef.current !== "listening") return;
+				if (wsRef.current?.readyState !== WebSocket.OPEN) return;
 
-			for (let i = 0; i < input.length; i++) {
-				const sample = input[i] ?? 0;
-				pcm[i] = Math.max(-32768, Math.min(32767, sample * 32768));
+				const input = e.inputBuffer.getChannelData(0);
+
+				// Resample if needed (Firefox typically runs at 44100 or 48000)
+				let samples: Float32Array;
+				if (nativeSampleRate !== targetSampleRate) {
+					const ratio = nativeSampleRate / targetSampleRate;
+					const newLength = Math.floor(input.length / ratio);
+					samples = new Float32Array(newLength);
+					for (let i = 0; i < newLength; i++) {
+						const srcIndex = Math.floor(i * ratio);
+						samples[i] = input[srcIndex] ?? 0;
+					}
+				} else {
+					samples = input;
+				}
+
+				// Convert to 16-bit PCM
+				const pcm = new Int16Array(samples.length);
+				for (let i = 0; i < samples.length; i++) {
+					const sample = samples[i] ?? 0;
+					pcm[i] = Math.max(-32768, Math.min(32767, sample * 32768));
+				}
+
+				wsRef.current.send(pcm.buffer);
+			};
+
+			source.connect(processor);
+			processor.connect(ctx.destination);
+
+			setState("listening");
+		} catch (error) {
+			console.error("[VoiceScreen] Failed to start audio:", error);
+		}
+	}, []);
+
+	/* ── Process transcript and send to agent ── */
+	const processTranscript = useCallback(async () => {
+		if (!transcript.trim()) {
+			setState("idle");
+			return;
+		}
+
+		setState("processing");
+		setAiResponse("Thinking...");
+
+		try {
+			// Create conversation if we don't have one
+			let conversationId = currentConversationId;
+			if (!conversationId) {
+				const result = await createConversation.mutateAsync({});
+				conversationId = result.id;
+				setCurrentConversationId(conversationId);
+				// Update URL without triggering navigation/remount
+				window.history.replaceState(null, "", `/conversation/${conversationId}`);
 			}
 
-			wsRef.current.send(pcm.buffer);
-		};
+			// Send the transcribed message to the agent
+			const response = await sendMessage.mutateAsync({
+				conversationId,
+				content: transcript,
+			});
 
-		source.connect(processor);
-		processor.connect(ctx.destination);
+			// Display the AI response
+			setAiResponse(response.content);
+			setState("speaking");
 
-		setState("listening");
-	}, []);
+			// Optionally use TTS for the response
+			try {
+				const ttsRes = await fetch("/api/tts", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ text: response.content }),
+				});
+
+				const blob = await ttsRes.blob();
+				const url = URL.createObjectURL(blob);
+				const audio = new Audio(url);
+
+				audioPlayerRef.current = audio;
+
+				audio.onended = () => {
+					URL.revokeObjectURL(url);
+					setState("idle");
+				};
+
+				audio.play();
+			} catch {
+				// TTS failed, just stay in idle state
+				setState("idle");
+			}
+		} catch (error) {
+			console.error("Error processing transcript:", error);
+			setAiResponse("Sorry, something went wrong. Please try again.");
+			setState("idle");
+		}
+	}, [transcript, currentConversationId, createConversation, sendMessage]);
+
+	// Keep ref updated for stopListening to use
+	processTranscriptRef.current = processTranscript;
 
 	/* ── Stop listening ── */
 	const stopListening = useCallback(async () => {
@@ -203,54 +309,86 @@ export function VoiceScreen() {
 
 		processorRef.current?.disconnect();
 		sourceRef.current?.disconnect();
-		streamRef.current?.getTracks().forEach((t) => t.stop());
+		streamRef.current?.getTracks().forEach((t) => { t.stop(); });
 		await audioCtxRef.current?.close();
 
 		setState("processing");
 
 		await new Promise((r) => setTimeout(r, 500));
-		await generateSpeech();
+		await processTranscriptRef.current?.();
 	}, []);
-
-	/* ── TTS ── */
-	const generateSpeech = async () => {
-		if (!transcript.trim()) {
-			setState("idle");
-			return;
-		}
-
-		setState("speaking");
-		setAiResponse("Thinking...");
-
-		const res = await fetch("/api/tts", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ text: `You said: ${transcript}` }),
-		});
-
-		const blob = await res.blob();
-		const url = URL.createObjectURL(blob);
-		const audio = new Audio(url);
-
-		audioPlayerRef.current = audio;
-		setAiResponse(`"${transcript}"`);
-
-		audio.onended = () => {
-			URL.revokeObjectURL(url);
-			setState("idle");
-		};
-
-		audio.play();
-	};
 
 	/* ── Reset ── */
 	const resetVoice = () => {
 		audioPlayerRef.current?.pause();
 		setTranscript("");
+		setTextInput("");
 		setInterimText("");
 		setAiResponse("");
 		setVolume(0);
 		setState("idle");
+	};
+
+	/* ── Submit text input ── */
+	const submitTextInput = async () => {
+		const text = textInput.trim();
+		if (!text) return;
+
+		setTranscript(text);
+		setTextInput("");
+		setState("processing");
+		setAiResponse("Thinking...");
+
+		try {
+			// Create conversation if we don't have one
+			let conversationId = currentConversationId;
+			if (!conversationId) {
+				const result = await createConversation.mutateAsync({});
+				conversationId = result.id;
+				setCurrentConversationId(conversationId);
+				// Update URL without triggering navigation/remount
+				window.history.replaceState(null, "", `/conversation/${conversationId}`);
+			}
+
+			// Send the transcribed message to the agent
+			const response = await sendMessage.mutateAsync({
+				conversationId,
+				content: text,
+			});
+
+			// Display the AI response
+			setAiResponse(response.content);
+			setState("speaking");
+
+			// Optionally use TTS for the response
+			try {
+				const ttsRes = await fetch("/api/tts", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ text: response.content }),
+				});
+
+				const blob = await ttsRes.blob();
+				const url = URL.createObjectURL(blob);
+				const audio = new Audio(url);
+
+				audioPlayerRef.current = audio;
+
+				audio.onended = () => {
+					URL.revokeObjectURL(url);
+					setState("idle");
+				};
+
+				audio.play();
+			} catch {
+				// TTS failed, just stay in idle state
+				setState("idle");
+			}
+		} catch (error) {
+			console.error("Error processing text input:", error);
+			setAiResponse("Sorry, something went wrong. Please try again.");
+			setState("idle");
+		}
 	};
 
 	/* ── UI ── */
@@ -258,8 +396,8 @@ export function VoiceScreen() {
 		<div className="relative flex h-full flex-col px-4 pt-[52px] pb-3">
 			<NotebookPaper className="mb-3 flex-1 min-h-0">
 				<div ref={scrollRef} className="h-full overflow-y-auto p-4 pl-14">
-					<h2 className="mb-2 font-handwriting text-xl text-violet-400">
-						Joanna
+					<h2 className="mb-2 font-handwriting text-xl text-theme-primary-light">
+						{personaName}
 					</h2>
 
 					{state === "idle" && !transcript && (
@@ -278,30 +416,93 @@ export function VoiceScreen() {
 
 					{aiResponse && (
 						<div className="mt-4 border-t pt-4">
-							<p className="text-xs uppercase text-violet-400">
-								Joanna
+							<p className="text-xs uppercase text-theme-primary-light">
+								{personaName}
 							</p>
-							<p className="text-violet-600">{aiResponse}</p>
+							<p className="text-theme-primary-dark">{aiResponse}</p>
 						</div>
 					)}
 				</div>
 			</NotebookPaper>
 
 			<div className="flex flex-col items-center gap-3">
-				<button
-					onPointerDown={startListening}
-					onPointerUp={stopListening}
-					className="select-none"
-				>
-					<Orb
-						isActive={state !== "idle"}
-						size={140}
-						volume={volume}
-					/>
-				</button>
+				{/* Voice/Text mode toggle */}
+				<div className="flex rounded-lg bg-stone-100 p-0.5 mb-2">
+					<button
+						onClick={() => setInputMode("voice")}
+						className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${inputMode === "voice"
+							? "bg-white text-theme-primary-dark shadow-sm"
+							: "text-stone-500 hover:text-stone-700"
+							}`}
+					>
+						🎤 Voice
+					</button>
+					<button
+						onClick={() => setInputMode("text")}
+						className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${inputMode === "text"
+							? "bg-white text-theme-primary-dark shadow-sm"
+							: "text-stone-500 hover:text-stone-700"
+							}`}
+					>
+						⌨️ Text
+					</button>
+				</div>
+
+				{inputMode === "voice" ? (
+					<>
+						<button
+							onPointerDown={startListening}
+							onPointerUp={stopListening}
+							className="select-none"
+						>
+							<Orb
+								isActive={state !== "idle"}
+								size={140}
+								volume={volume}
+							/>
+						</button>
+						<p className="text-xs text-stone-400">
+							{state === "idle" && "Hold the orb to speak"}
+							{state === "listening" && "Listening… release to stop"}
+							{state === "processing" && "Processing..."}
+							{state === "speaking" && "Speaking..."}
+						</p>
+					</>
+				) : (
+					<div className="w-full max-w-md px-4">
+						<div className="flex gap-2">
+							<input
+								type="text"
+								value={textInput}
+								onChange={(e) => setTextInput(e.target.value)}
+								onKeyDown={(e) => e.key === "Enter" && submitTextInput()}
+								placeholder="Type your message..."
+								className="flex-1 rounded-xl border border-theme-border bg-white px-4 py-3 text-sm text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-theme-primary-lighter"
+								disabled={state !== "idle"}
+							/>
+							<button
+								onClick={submitTextInput}
+								disabled={!textInput.trim() || state !== "idle"}
+								className="rounded-xl bg-theme-primary px-4 py-3 text-sm font-medium text-white transition-all hover:bg-theme-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								Send
+							</button>
+						</div>
+						<p className="mt-2 text-xs text-stone-400 text-center">
+							{state === "idle" && "Press Enter or click Send"}
+							{state === "processing" && "Processing..."}
+							{state === "speaking" && "Speaking..."}
+						</p>
+					</div>
+				)}
 
 				{state === "idle" && transcript && (
-					<button onClick={resetVoice}>Start Over</button>
+					<button
+						onClick={resetVoice}
+						className="rounded-full border border-theme-border px-4 py-1.5 text-sm text-stone-500 hover:bg-theme-bg-hover"
+					>
+						Start Over
+					</button>
 				)}
 			</div>
 
@@ -326,8 +527,8 @@ export function VoiceScreen() {
 							<button
 								onClick={() => setUseCurrentTime(true)}
 								className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all ${useCurrentTime
-										? "bg-white text-violet-600 shadow-sm"
-										: "text-stone-500 hover:text-stone-700"
+									? "bg-white text-theme-primary-dark shadow-sm"
+									: "text-stone-500 hover:text-stone-700"
 									}`}
 							>
 								Current
@@ -335,8 +536,8 @@ export function VoiceScreen() {
 							<button
 								onClick={() => setUseCurrentTime(false)}
 								className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all ${!useCurrentTime
-										? "bg-white text-violet-600 shadow-sm"
-										: "text-stone-500 hover:text-stone-700"
+									? "bg-white text-theme-primary-dark shadow-sm"
+									: "text-stone-500 hover:text-stone-700"
 									}`}
 							>
 								Manual
@@ -352,7 +553,7 @@ export function VoiceScreen() {
 								type="datetime-local"
 								value={manualTimestamp}
 								onChange={(e) => setManualTimestamp(e.target.value)}
-								className="w-full rounded-lg border border-violet-200 px-2 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
+								className="w-full rounded-lg border border-theme-border px-2 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-theme-primary-lighter"
 							/>
 						)}
 
@@ -371,7 +572,7 @@ export function VoiceScreen() {
 							height="18"
 							viewBox="0 0 24 24"
 							fill="none"
-							stroke="rgb(167 139 250)"
+							stroke="rgb(var(--theme-primary-light))"
 							strokeWidth="2"
 							strokeLinecap="round"
 							strokeLinejoin="round"

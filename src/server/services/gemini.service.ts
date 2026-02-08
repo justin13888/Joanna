@@ -18,9 +18,9 @@ export class GeminiService {
     private client: GoogleGenAI;
     private model: string;
 
-    constructor(config: { apiKey: string; model?: string }) {
+    constructor(config: { apiKey: string; model: string }) {
         this.client = new GoogleGenAI({ apiKey: config.apiKey });
-        this.model = config.model ?? "gemini-2.0-flash";
+        this.model = config.model;
     }
 
     /**

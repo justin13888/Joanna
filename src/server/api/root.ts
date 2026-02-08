@@ -1,5 +1,6 @@
 import { authRouter } from "@/server/api/routers/auth";
 import { conversationRouter } from "@/server/api/routers/conversation";
+import { debugRouter } from "@/server/api/routers/debug";
 import { memoryRouter } from "@/server/api/routers/memory";
 import { messageRouter } from "@/server/api/routers/message";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
@@ -13,6 +14,7 @@ export const appRouter = createTRPCRouter({
 	// Joanna voice assistant routers
 	auth: authRouter,
 	conversation: conversationRouter,
+	debug: debugRouter,
 	message: messageRouter,
 	memory: memoryRouter,
 });

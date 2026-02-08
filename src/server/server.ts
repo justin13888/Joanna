@@ -11,19 +11,13 @@ import { parse } from "node:url";
 import next from "next";
 import { WebSocketServer, WebSocket } from "ws";
 import { GeminiLiveService } from "./services/gemini-live.service";
+import { env } from "@/env";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = "localhost";
 const port = parseInt(process.env.PORT ?? "3000", 10);
 
-// Validate required env
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-if (!GOOGLE_API_KEY) {
-    console.error("Error: GOOGLE_API_KEY environment variable is required");
-    process.exit(1);
-}
-
-const geminiLive = new GeminiLiveService({ apiKey: GOOGLE_API_KEY });
+const geminiLive = new GeminiLiveService({ apiKey: env.GOOGLE_API_KEY });
 
 // Initialize Next.js
 const app = next({ dev, hostname, port });

@@ -7,6 +7,19 @@
 		"Segoe UI Symbol", "Noto Color Emoji";
 	--font-handwriting: var(--font-patrick), "Comic Sans MS", cursive;
 	--font-patrick: var(--font-patrick), cursive;
+
+	/* Map theme colors to CSS variables */
+	--color-theme-primary: rgb(var(--theme-primary));
+	--color-theme-primary-light: rgb(var(--theme-primary-light));
+	--color-theme-primary-lighter: rgb(var(--theme-primary-lighter));
+	--color-theme-primary-lightest: rgb(var(--theme-primary-lightest));
+	--color-theme-primary-dark: rgb(var(--theme-primary-dark));
+
+	--color-theme-accent: rgb(var(--theme-accent));
+	--color-theme-accent-hover: rgb(var(--theme-accent-hover));
+	--color-theme-border: rgb(var(--theme-border));
+	--color-theme-ring: rgb(var(--theme-ring));
+	--color-theme-bg-hover: rgb(var(--theme-bg-hover));
 }
 
 * {
@@ -16,10 +29,97 @@
 
 :root {
 	--safe-bottom: env(safe-area-inset-bottom, 0px);
+
+	/* ── Theme Color Palette (Joanna - Purple) ── */
+	--theme-primary: 139 92 246;
+	/* violet-500 */
+	--theme-primary-light: 167 139 250;
+	/* violet-400 */
+	--theme-primary-lighter: 196 181 253;
+	/* violet-300 */
+	--theme-primary-lightest: 237 233 254;
+	/* violet-100 */
+	--theme-primary-dark: 124 58 237;
+	/* violet-600 */
+
+	/* Accent colors for UI elements */
+	--theme-accent: 139 92 246;
+	--theme-accent-hover: 124 58 237;
+	--theme-border: 196 181 253;
+	--theme-ring: 196 181 253;
+	--theme-bg-hover: 245 243 255;
+	/* violet-50 */
 }
 
 body {
 	background-color: #171717;
+}
+
+/* ─── Joe Theme (Green) ─── */
+.theme-joe {
+	--theme-primary: 34 197 94;
+	/* green-500 */
+	--theme-primary-light: 74 222 128;
+	/* green-400 */
+	--theme-primary-lighter: 134 239 172;
+	/* green-300 */
+	--theme-primary-lightest: 220 252 231;
+	/* green-100 */
+	--theme-primary-dark: 22 163 74;
+	/* green-600 */
+
+	--theme-accent: 34 197 94;
+	--theme-accent-hover: 22 163 74;
+	--theme-border: 134 239 172;
+	--theme-ring: 134 239 172;
+	--theme-bg-hover: 240 253 244;
+	/* green-50 */
+}
+
+.theme-joe .diary-bg {
+	background: radial-gradient(ellipse at 50% 40%,
+			#e4f4ec 0%,
+			#dceee4 40%,
+			#cde2d8 80%,
+			#c2dbcf 100%),
+		#dceee4;
+}
+
+.theme-joe .notebook-lines {
+	background-image: repeating-linear-gradient(transparent,
+			transparent 35px,
+			#c4dbc8 35px,
+			#c4dbc8 36px);
+}
+
+.theme-joe .book-spine {
+	background: linear-gradient(90deg,
+			#b9d4c5 0%,
+			#d0e4d8 30%,
+			#d6eadd 50%,
+			#d0e4d8 70%,
+			#b9d4c5 100%);
+}
+
+.theme-joe .spiral-coil {
+	background-image: linear-gradient(180deg,
+			#a4c6b0 0%,
+			#7ca68a 40%,
+			#62906e 100%),
+		linear-gradient(180deg, #cce4d4 0%, #98c0a8 50%, #6e9a7a 100%);
+}
+
+/* Override violet scrollbar to green */
+.theme-joe * {
+	scrollbar-color: rgb(134 239 172 / 0.3) transparent;
+}
+
+.theme-joe .notebook-lines::-webkit-scrollbar-thumb {
+	background: #b8d6c4;
+}
+
+.theme-joe .notebook-lines::-webkit-scrollbar-thumb:hover {
+	background: #98be98;
 }
 
 /* ─── Orb animations ─── */

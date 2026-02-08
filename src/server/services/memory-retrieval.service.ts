@@ -54,8 +54,6 @@ export class MemoryRetrievalService {
         const limit = params.limit ?? 10;
 
         try {
-            // For now, get all memories and filter locally
-            // TODO: Use Backboard's search API when available
             const memories = await this.backboardService.getMemories({ limit: 100 });
 
             // Simple keyword matching for now

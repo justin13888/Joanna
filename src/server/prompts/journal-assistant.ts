@@ -67,4 +67,9 @@ Respond in JSON format:
   "confidence": 0.0-1.0
 }
 
-Be selective - only extract genuinely meaningful information, not trivial details.`;
+Be thorough - extract all meaningful details including:
+- Specific numbers, metrics, and milestones (e.g., "100kg", "5 miles")
+- Names of people, places, and things
+- Specific emotions and their causes
+- stated preferences or dislikes
+- Future plans with dates/times if available`;

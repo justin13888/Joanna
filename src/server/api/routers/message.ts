@@ -15,6 +15,7 @@ import {
     startConversationSchema,
 } from "@/server/schemas";
 import { TRPCError } from "@trpc/server";
+import type { BackboardAPIError } from "backboard-sdk";
 
 export const messageRouter = createTRPCRouter({
     /**
@@ -42,6 +43,24 @@ export const messageRouter = createTRPCRouter({
                     },
                 };
             } catch (error) {
+                console.error("--- ERROR IN MESSAGE.SEND ---");
+                // Log the full structure including non-enumerable properties like 'message', 'stack'
+                console.error(
+                    "Full error object:",
+                    JSON.stringify(error, Object.getOwnPropertyNames(error), 2)
+                );
+
+                // Specifically check for BackboardSDK specific fields if they exist on the error object
+                // @ts-expect-error - Checking for possible hidden properties
+                if (error?.response?.data) {
+                    // @ts-expect-error - Checking for possible hidden properties
+                    console.error("API Response Data:", JSON.stringify(error.response.data, null, 2));
+                }
+
+                if (error instanceof Error) {
+                    console.error("Stack:", error.stack);
+                }
+
                 if (error instanceof Error && error.message === "Conversation not found") {
                     throw new TRPCError({
                         code: "NOT_FOUND",

@@ -4,6 +4,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Patrick_Hand } from "next/font/google";
 
 import { TRPCReactProvider } from "@/trpc/react";
+import { PersonaProvider } from "@/app/_components/persona-context";
 
 export const metadata: Metadata = {
 	title: "Joanna",
@@ -35,8 +36,24 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
 	return (
 		<html className={`${geist.variable} ${patrickHand.variable}`} lang="en">
+			<head>
+				<script
+					dangerouslySetInnerHTML={{
+						__html: `
+							try {
+								const stored = localStorage.getItem("persona-preference");
+								if (stored === "joe") {
+									document.documentElement.classList.add("theme-joe");
+								}
+							} catch (e) {}
+						`,
+					}}
+				/>
+			</head>
 			<body className="min-h-dvh antialiased">
-				<TRPCReactProvider>{children}</TRPCReactProvider>
+				<TRPCReactProvider>
+					<PersonaProvider>{children}</PersonaProvider>
+				</TRPCReactProvider>
 			</body>
 		</html>
 	);

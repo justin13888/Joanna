@@ -3,6 +3,35 @@ export type DiaryEntry = {
 	bullets: string[];
 };
 
+/**
+ * Transform API memories into DiaryEntry format.
+ * Groups memories by date and combines their content into bullets.
+ */
+export function memoriesToDiaryEntries(
+	memories: { content: string; createdAt: Date }[],
+): DiaryEntry[] {
+	// Group memories by date
+	const byDate = new Map<string, string[]>();
+
+	for (const memory of memories) {
+		const date = memory.createdAt.toISOString().split("T")[0]!;
+		const existing = byDate.get(date) ?? [];
+		existing.push(memory.content);
+		byDate.set(date, existing);
+	}
+
+	// Convert to DiaryEntry array
+	const entries: DiaryEntry[] = [];
+	for (const [date, bullets] of byDate.entries()) {
+		entries.push({ date, bullets });
+	}
+
+	// Sort by date descending (newest first)
+	entries.sort((a, b) => b.date.localeCompare(a.date));
+
+	return entries;
+}
+
 export const diaryEntries: DiaryEntry[] = [
 	// January 2026
 	{
@@ -166,13 +195,15 @@ export function dateKey(year: number, month: number, day: number): string {
 
 /**
  * Get a map of date key -> entry for a given month
+ * @param entries Optional entries to use instead of static diaryEntries
  */
 export function getEntryMap(
 	year: number,
 	month: number,
+	entries: DiaryEntry[] = diaryEntries,
 ): Map<string, DiaryEntry> {
 	const map = new Map<string, DiaryEntry>();
-	for (const entry of diaryEntries) {
+	for (const entry of entries) {
 		const d = parseDate(entry.date);
 		if (d.year === year && d.month === month) {
 			map.set(entry.date, entry);

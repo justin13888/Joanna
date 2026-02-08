@@ -15,8 +15,9 @@ export const env = createEnv({
 		BACKBOARD_API_KEY: z.string(),
 		BACKBOARD_ASSISTANT_ID: z.string().optional(), // Will be created on first run if not set
 		// LLM configuration
-		LLM_PROVIDER: z.enum(["openai", "anthropic", "google"]).default("google"),
-		LLM_MODEL: z.string().default("gemini-2.0-flash"),
+		LLM_PROVIDER: z.enum(["google"]),
+		// LLM_PROVIDER: z.enum(["openai", "anthropic", "google"]),
+		LLM_MODEL: z.string(),
 		// Google API key for Gemini multimodal (audio/voice)
 		GOOGLE_API_KEY: z.string(),
 		// ElevenLabs API key for text-to-speech

@@ -9,8 +9,11 @@ import {
 	dateKey,
 	formatDateLong,
 	type DiaryEntry,
+	diaryEntries,
+	memoriesToDiaryEntries,
 } from "./diary-data";
-
+import { api } from "@/trpc/react";
+import { PersonaToggle } from "./persona-toggle";
 const PAGE_HEIGHT_NUM = 620;
 const PAGE_HEIGHT = `${PAGE_HEIGHT_NUM}px`;
 const PAGE_WIDTH = 420;
@@ -114,7 +117,21 @@ export function Diary({ year, onBack }: DiaryProps) {
 	const flipTimeout1 = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const flipTimeout2 = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-	const entryMap = getEntryMap(selectedYear, selectedMonth);
+	// Fetch memories from API
+	const { data: memoriesData } = api.memory.list.useQuery(undefined, {
+		// Refetch on window focus to get latest memories
+		refetchOnWindowFocus: true,
+	});
+
+	// Convert API memories to diary entries, fallback to static data
+	const entries = useMemo(() => {
+		if (memoriesData?.memories && memoriesData.memories.length > 0) {
+			return memoriesToDiaryEntries(memoriesData.memories);
+		}
+		return diaryEntries;
+	}, [memoriesData]);
+
+	const entryMap = getEntryMap(selectedYear, selectedMonth, entries);
 	const weeks = getCalendarGrid(selectedYear, selectedMonth);
 
 	const holeCenters = useMemo(() => computeHoleCenters(), []);
@@ -199,36 +216,57 @@ export function Diary({ year, onBack }: DiaryProps) {
 		[holeCenters],
 	);
 
-	return (
-		<div className="flex flex-col items-center rounded-2xl p-4 font-patrick sm:p-6">
-			{/* Close / put book back */}
-			{onBack && (
-				<button
-					onClick={onBack}
-					className="mb-4 flex items-center gap-2 self-end rounded-full bg-violet-100/60 px-4 py-2 text-sm font-medium text-[#5a4a7a] transition-all hover:bg-violet-100 active:scale-95"
-					type="button"
-				>
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						width="14"
-						height="14"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="2"
-						strokeLinecap="round"
-						strokeLinejoin="round"
-					>
-						<path d="M18 6 6 18" />
-						<path d="m6 6 12 12" />
-					</svg>
-					Close book
-				</button>
-			)}
-			<div
-				className="book-container flex items-stretch"
-				style={{ perspective: "1200px" }}
-			>
+return (
+  <div className="diary-bg relative flex min-h-screen items-center justify-center p-4 font-patrick sm:p-8">
+    {/* ── Persona Toggle (top-right) ── */}
+    <div className="absolute top-4 right-4 z-50">
+      <PersonaToggle />
+    </div>
+    
+    <div className="flex flex-col items-center rounded-2xl p-4 font-patrick sm:p-6">
+      {/* Close / put book back */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="mb-4 flex items-center gap-2 self-end rounded-full bg-violet-100/60 px-4 py-2 text-sm font-medium text-[#5a4a7a] transition-all hover:bg-violet-100 active:scale-95"
+          type="button"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18 6 6 18" />
+            <path d="m6 6 12 12" />
+          </svg>
+          Close book
+        </button>
+      )}
+      
+      {/* Month Tabs */}
+      <div className="month-tabs z-30 mb-6 flex gap-1">
+        {visibleMonths.map((month, index) => (
+          <button
+            key={month}
+            onClick={() => handleMonthTab(index)}
+            className={`month-tab -mr-px relative rounded-l-lg border border-r-0 px-3 py-2 text-lg font-semibold sm:px-4 sm:text-xl ${selectedMonth === index ? "month-tab-active z-20 border-[#c4b8d6] bg-[#f5f0ea] text-[#5a4a7a]" : "month-tab-inactive border-[#b8acd0] bg-[#b8aad2] text-[#ece6f4] hover:bg-[#c8bce0] hover:text-white"}`}
+          >
+            {month.slice(0, 3)}
+          </button>
+        ))}
+      </div>
+      
+      <div
+        className="book-container flex items-stretch"
+        style={{ perspective: "1200px" }}
+      >
+ 
 				{/* ── Month Tabs ── */}
 				<div className="flex flex-col justify-center gap-0.5">
 					{visibleMonths.map((month, index) => (
