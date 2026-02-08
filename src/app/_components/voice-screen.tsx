@@ -5,6 +5,7 @@ import { CONTEXT_PROMPTS } from "./dummy-data";
 import { Orb } from "./orb";
 
 type VoiceState = "idle" | "listening" | "processing" | "speaking";
+type InputMode = "voice" | "text";
 
 /* ─── Notebook paper component ─── */
 
@@ -85,7 +86,9 @@ function WritingPencil() {
 
 export function VoiceScreen() {
 	const [state, setState] = useState<VoiceState>("idle");
+	const [inputMode, setInputMode] = useState<InputMode>("voice");
 	const [transcript, setTranscript] = useState("");
+	const [textInput, setTextInput] = useState("");
 	const [interimText, setInterimText] = useState("");
 	const [aiResponse, setAiResponse] = useState("");
 	const [volume, setVolume] = useState(0);
@@ -154,45 +157,67 @@ export function VoiceScreen() {
 		setInterimText("");
 		setAiResponse("");
 
-		const stream = await navigator.mediaDevices.getUserMedia({
-			audio: {
-				sampleRate: 16000,
-				channelCount: 1,
-				echoCancellation: true,
-				noiseSuppression: true,
-			},
-		});
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({
+				audio: {
+					echoCancellation: true,
+					noiseSuppression: true,
+				},
+			});
 
-		streamRef.current = stream;
+			streamRef.current = stream;
 
-		const ctx = new AudioContext({ sampleRate: 16000 });
-		audioCtxRef.current = ctx;
+			// Create AudioContext without sampleRate constraint for Firefox compatibility
+			const ctx = new AudioContext();
+			audioCtxRef.current = ctx;
 
-		const source = ctx.createMediaStreamSource(stream);
-		sourceRef.current = source;
+			const source = ctx.createMediaStreamSource(stream);
+			sourceRef.current = source;
 
-		const processor = ctx.createScriptProcessor(4096, 1, 1);
-		processorRef.current = processor;
+			const processor = ctx.createScriptProcessor(4096, 1, 1);
+			processorRef.current = processor;
 
-		processor.onaudioprocess = (e) => {
-			if (stateRef.current !== "listening") return;
-			if (wsRef.current?.readyState !== WebSocket.OPEN) return;
+			// Target sample rate for Gemini API
+			const targetSampleRate = 16000;
+			const nativeSampleRate = ctx.sampleRate;
 
-			const input = e.inputBuffer.getChannelData(0);
-			const pcm = new Int16Array(input.length);
+			processor.onaudioprocess = (e) => {
+				if (stateRef.current !== "listening") return;
+				if (wsRef.current?.readyState !== WebSocket.OPEN) return;
 
-			for (let i = 0; i < input.length; i++) {
-				const sample = input[i] ?? 0;
-				pcm[i] = Math.max(-32768, Math.min(32767, sample * 32768));
-			}
+				const input = e.inputBuffer.getChannelData(0);
 
-			wsRef.current.send(pcm.buffer);
-		};
+				// Resample if needed (Firefox typically runs at 44100 or 48000)
+				let samples: Float32Array;
+				if (nativeSampleRate !== targetSampleRate) {
+					const ratio = nativeSampleRate / targetSampleRate;
+					const newLength = Math.floor(input.length / ratio);
+					samples = new Float32Array(newLength);
+					for (let i = 0; i < newLength; i++) {
+						const srcIndex = Math.floor(i * ratio);
+						samples[i] = input[srcIndex] ?? 0;
+					}
+				} else {
+					samples = input;
+				}
 
-		source.connect(processor);
-		processor.connect(ctx.destination);
+				// Convert to 16-bit PCM
+				const pcm = new Int16Array(samples.length);
+				for (let i = 0; i < samples.length; i++) {
+					const sample = samples[i] ?? 0;
+					pcm[i] = Math.max(-32768, Math.min(32767, sample * 32768));
+				}
 
-		setState("listening");
+				wsRef.current.send(pcm.buffer);
+			};
+
+			source.connect(processor);
+			processor.connect(ctx.destination);
+
+			setState("listening");
+		} catch (error) {
+			console.error("[VoiceScreen] Failed to start audio:", error);
+		}
 	}, []);
 
 	/* ── Stop listening ── */
@@ -247,10 +272,60 @@ export function VoiceScreen() {
 	const resetVoice = () => {
 		audioPlayerRef.current?.pause();
 		setTranscript("");
+		setTextInput("");
 		setInterimText("");
 		setAiResponse("");
 		setVolume(0);
 		setState("idle");
+	};
+
+	/* ── Submit text input ── */
+	const submitTextInput = async () => {
+		if (!textInput.trim()) return;
+
+		setTranscript(textInput);
+		setTextInput("");
+		setState("processing");
+
+		await new Promise((r) => setTimeout(r, 300));
+		await generateSpeechFromText(textInput);
+	};
+
+	/* ── TTS for text input ── */
+	const generateSpeechFromText = async (text: string) => {
+		if (!text.trim()) {
+			setState("idle");
+			return;
+		}
+
+		setState("speaking");
+		setAiResponse("Thinking...");
+
+		try {
+			const res = await fetch("/api/tts", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ text: `You said: ${text}` }),
+			});
+
+			const blob = await res.blob();
+			const url = URL.createObjectURL(blob);
+			const audio = new Audio(url);
+
+			audioPlayerRef.current = audio;
+			setAiResponse(`"${text}"`);
+
+			audio.onended = () => {
+				URL.revokeObjectURL(url);
+				setState("idle");
+			};
+
+			audio.play();
+		} catch (error) {
+			console.error("[VoiceScreen] TTS error:", error);
+			setAiResponse("Failed to generate speech");
+			setTimeout(() => setState("idle"), 2000);
+		}
 	};
 
 	/* ── UI ── */
@@ -288,20 +363,83 @@ export function VoiceScreen() {
 			</NotebookPaper>
 
 			<div className="flex flex-col items-center gap-3">
-				<button
-					onPointerDown={startListening}
-					onPointerUp={stopListening}
-					className="select-none"
-				>
-					<Orb
-						isActive={state !== "idle"}
-						size={140}
-						volume={volume}
-					/>
-				</button>
+				{/* Voice/Text mode toggle */}
+				<div className="flex rounded-lg bg-stone-100 p-0.5 mb-2">
+					<button
+						onClick={() => setInputMode("voice")}
+						className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${inputMode === "voice"
+								? "bg-white text-violet-600 shadow-sm"
+								: "text-stone-500 hover:text-stone-700"
+							}`}
+					>
+						🎤 Voice
+					</button>
+					<button
+						onClick={() => setInputMode("text")}
+						className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${inputMode === "text"
+								? "bg-white text-violet-600 shadow-sm"
+								: "text-stone-500 hover:text-stone-700"
+							}`}
+					>
+						⌨️ Text
+					</button>
+				</div>
+
+				{inputMode === "voice" ? (
+					<>
+						<button
+							onPointerDown={startListening}
+							onPointerUp={stopListening}
+							className="select-none"
+						>
+							<Orb
+								isActive={state !== "idle"}
+								size={140}
+								volume={volume}
+							/>
+						</button>
+						<p className="text-xs text-stone-400">
+							{state === "idle" && "Hold the orb to speak"}
+							{state === "listening" && "Listening… release to stop"}
+							{state === "processing" && "Processing..."}
+							{state === "speaking" && "Speaking..."}
+						</p>
+					</>
+				) : (
+					<div className="w-full max-w-md px-4">
+						<div className="flex gap-2">
+							<input
+								type="text"
+								value={textInput}
+								onChange={(e) => setTextInput(e.target.value)}
+								onKeyDown={(e) => e.key === "Enter" && submitTextInput()}
+								placeholder="Type your message..."
+								className="flex-1 rounded-xl border border-violet-200 bg-white px-4 py-3 text-sm text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-violet-300"
+								disabled={state !== "idle"}
+							/>
+							<button
+								onClick={submitTextInput}
+								disabled={!textInput.trim() || state !== "idle"}
+								className="rounded-xl bg-violet-500 px-4 py-3 text-sm font-medium text-white transition-all hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								Send
+							</button>
+						</div>
+						<p className="mt-2 text-xs text-stone-400 text-center">
+							{state === "idle" && "Press Enter or click Send"}
+							{state === "processing" && "Processing..."}
+							{state === "speaking" && "Speaking..."}
+						</p>
+					</div>
+				)}
 
 				{state === "idle" && transcript && (
-					<button onClick={resetVoice}>Start Over</button>
+					<button
+						onClick={resetVoice}
+						className="rounded-full border border-violet-200 px-4 py-1.5 text-sm text-stone-500 hover:bg-violet-50"
+					>
+						Start Over
+					</button>
 				)}
 			</div>
 
@@ -326,8 +464,8 @@ export function VoiceScreen() {
 							<button
 								onClick={() => setUseCurrentTime(true)}
 								className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all ${useCurrentTime
-										? "bg-white text-violet-600 shadow-sm"
-										: "text-stone-500 hover:text-stone-700"
+									? "bg-white text-violet-600 shadow-sm"
+									: "text-stone-500 hover:text-stone-700"
 									}`}
 							>
 								Current
@@ -335,8 +473,8 @@ export function VoiceScreen() {
 							<button
 								onClick={() => setUseCurrentTime(false)}
 								className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all ${!useCurrentTime
-										? "bg-white text-violet-600 shadow-sm"
-										: "text-stone-500 hover:text-stone-700"
+									? "bg-white text-violet-600 shadow-sm"
+									: "text-stone-500 hover:text-stone-700"
 									}`}
 							>
 								Manual
