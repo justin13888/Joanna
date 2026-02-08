@@ -140,12 +140,29 @@ export class AgentService {
             responseStrategy: this.inferResponseStrategy(synthesisResult, retrievedContext),
         };
 
-        console.log("[Agent] Process complete, returning response");
+        // Determine if conversation should terminate
+        // Terminate if: explicit termination signal, or minimal response with no follow-ups
+        const shouldTerminate = synthesisResult.shouldTerminate ||
+            (synthesisResult.isMinimalResponse &&
+                synthesisResult.followUpQuestions.length === 0 &&
+                synthesisResult.previousTopicsToRevisit.length === 0);
+
+        const terminationReason = synthesisResult.shouldTerminate
+            ? synthesisResult.terminationReason
+            : (shouldTerminate ? "no_new_info" : null);
+
+        console.log("[Agent] Process complete, returning response", {
+            shouldTerminate,
+            terminationReason,
+            isMinimalResponse: synthesisResult.isMinimalResponse
+        });
 
         return {
             content: response.content,
             planningState,
             timestamp: new Date(),
+            shouldTerminate,
+            terminationReason,
         };
     }
 
@@ -214,6 +231,8 @@ export class AgentService {
             content: response.content,
             planningState,
             timestamp: new Date(),
+            shouldTerminate: false,
+            terminationReason: null,
         };
     }
 
@@ -223,7 +242,13 @@ export class AgentService {
      */
     private buildAugmentedPrompt(
         userMessage: string,
-        synthesisResult: { followUpQuestions: string[]; elaborationTopics: string[] },
+        synthesisResult: {
+            followUpQuestions: string[];
+            elaborationTopics: string[];
+            previousTopicsToRevisit: string[];
+            isMinimalResponse: boolean;
+            shouldTerminate: boolean;
+        },
         retrievedContext: RetrievedMemory[],
     ): string {
         const parts: string[] = [];
@@ -232,9 +257,28 @@ export class AgentService {
         parts.push(userMessage);
 
         // Add internal context (not visible to user but helps LLM)
-        if (retrievedContext.length > 0 || synthesisResult.followUpQuestions.length > 0) {
+        const hasContext = retrievedContext.length > 0 ||
+            synthesisResult.followUpQuestions.length > 0 ||
+            synthesisResult.previousTopicsToRevisit.length > 0 ||
+            synthesisResult.isMinimalResponse ||
+            synthesisResult.shouldTerminate;
+
+        if (hasContext) {
             parts.push("\n\n---");
             parts.push("(Internal context for response planning - do not mention explicitly)");
+
+            // Signal if user wants to end
+            if (synthesisResult.shouldTerminate) {
+                parts.push("\n⚠️ User appears to want to END the conversation. Give a warm closing response.");
+            }
+
+            // Signal if response is minimal
+            if (synthesisResult.isMinimalResponse && !synthesisResult.shouldTerminate) {
+                parts.push("\n⚠️ User gave a minimal response. Either:");
+                parts.push("- Ask ONE more follow-up on the current topic, OR");
+                parts.push("- Transition to a different topic from the suggestions below, OR");
+                parts.push("- Offer them a graceful way to end if they seem done");
+            }
 
             if (retrievedContext.length > 0) {
                 parts.push("\nRelevant memories from past conversations:");
@@ -244,7 +288,7 @@ export class AgentService {
             }
 
             if (synthesisResult.followUpQuestions.length > 0) {
-                parts.push("\nPotential follow-up questions:");
+                parts.push("\nPotential follow-up questions for current topic:");
                 for (const question of synthesisResult.followUpQuestions.slice(0, 2)) {
                     parts.push(`- ${question}`);
                 }
@@ -253,6 +297,14 @@ export class AgentService {
             if (synthesisResult.elaborationTopics.length > 0) {
                 parts.push("\nTopics that could be elaborated:");
                 for (const topic of synthesisResult.elaborationTopics.slice(0, 2)) {
+                    parts.push(`- ${topic}`);
+                }
+            }
+
+            // Add previous topics to revisit when running out of current follow-ups
+            if (synthesisResult.previousTopicsToRevisit.length > 0) {
+                parts.push("\nTopics from earlier that could be revisited (if current topic stalls):");
+                for (const topic of synthesisResult.previousTopicsToRevisit.slice(0, 2)) {
                     parts.push(`- ${topic}`);
                 }
             }
@@ -265,9 +317,28 @@ export class AgentService {
      * Infer the response strategy based on synthesis and retrieved context.
      */
     private inferResponseStrategy(
-        synthesisResult: { followUpQuestions: string[]; extractedMemories: { category: string }[] },
+        synthesisResult: {
+            followUpQuestions: string[];
+            extractedMemories: { category: string }[];
+            shouldTerminate?: boolean;
+            isMinimalResponse?: boolean;
+            previousTopicsToRevisit?: string[];
+        },
         retrievedContext: RetrievedMemory[],
     ): string {
+        // Highest priority: termination
+        if (synthesisResult.shouldTerminate) {
+            return "conversation_closing";
+        }
+
+        // If minimal response, we might need to pivot or offer exit
+        if (synthesisResult.isMinimalResponse) {
+            if (synthesisResult.previousTopicsToRevisit && synthesisResult.previousTopicsToRevisit.length > 0) {
+                return "topic_transition";
+            }
+            return "minimal_response_handling";
+        }
+
         if (retrievedContext.length > 0) {
             return "contextual_follow_up";
         }

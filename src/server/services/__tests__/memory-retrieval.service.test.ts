@@ -27,7 +27,11 @@ describe("MemoryRetrievalService", () => {
                 ],
                 followUpQuestions: [],
                 elaborationTopics: ["coffee preferences"],
+                previousTopicsToRevisit: [],
                 confidence: 0.9,
+                shouldTerminate: false,
+                terminationReason: null,
+                isMinimalResponse: false,
             };
 
             const result = await service.retrieveContext({
@@ -44,7 +48,11 @@ describe("MemoryRetrievalService", () => {
                 extractedMemories: [],
                 followUpQuestions: [],
                 elaborationTopics: [],
+                previousTopicsToRevisit: [],
                 confidence: 0,
+                shouldTerminate: false,
+                terminationReason: null,
+                isMinimalResponse: false,
             };
 
             const result = await service.retrieveContext({

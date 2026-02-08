@@ -14,8 +14,10 @@ import type {
     MemoryCategory,
     RetrievedMemory,
     SynthesisResult,
+    TerminationReason,
 } from "@/server/types";
 import { MEMORY_SYNTHESIS_PROMPT } from "@/server/prompts/journal-assistant";
+
 
 interface SynthesisResponse {
     extractedMemories: Array<{
@@ -25,7 +27,11 @@ interface SynthesisResponse {
     }>;
     followUpQuestions: string[];
     elaborationTopics: string[];
+    previousTopicsToRevisit: string[];
     confidence: number;
+    shouldTerminate: boolean;
+    terminationReason: string | null;
+    isMinimalResponse: boolean;
 }
 
 export class MemorySynthesisService {
@@ -155,11 +161,21 @@ Analyze the user's message and extract memories, follow-up questions, and elabor
                     confidence: Math.round(Math.max(0, Math.min(1, m.confidence || 0.5)) * 100),
                 }));
 
+            // Parse termination reason
+            const validTerminationReasons = ["user_farewell", "no_new_info", "user_explicit_end", "natural_conclusion"];
+            const terminationReason = parsed.terminationReason && validTerminationReasons.includes(parsed.terminationReason)
+                ? parsed.terminationReason as TerminationReason
+                : null;
+
             return {
                 extractedMemories,
                 followUpQuestions: parsed.followUpQuestions || [],
                 elaborationTopics: parsed.elaborationTopics || [],
+                previousTopicsToRevisit: parsed.previousTopicsToRevisit || [],
                 confidence: Math.round(Math.max(0, Math.min(1, parsed.confidence || 0.5)) * 100),
+                shouldTerminate: Boolean(parsed.shouldTerminate),
+                terminationReason,
+                isMinimalResponse: Boolean(parsed.isMinimalResponse),
             };
         } catch (error) {
             console.warn("Failed to parse synthesis response:", error, { content });
@@ -175,7 +191,11 @@ Analyze the user's message and extract memories, follow-up questions, and elabor
             extractedMemories: [],
             followUpQuestions: [],
             elaborationTopics: [],
+            previousTopicsToRevisit: [],
             confidence: 0,
+            shouldTerminate: false,
+            terminationReason: null,
+            isMinimalResponse: false,
         };
     }
 }

@@ -146,7 +146,11 @@ export class BackboardService implements IBackboardService {
         });
 
         this.assistantId = assistant.assistantId;
-        console.log(`Created new Backboard assistant: ${this.assistantId}`);
+        console.log(`\n${"=".repeat(70)}`);
+        console.log(`🆕 Created NEW Backboard assistant: ${this.assistantId}`);
+        console.log(`\n⚠️  IMPORTANT: To persist memories across restarts, add this to .env:`);
+        console.log(`   BACKBOARD_ASSISTANT_ID="${this.assistantId}"`);
+        console.log(`${"=".repeat(70)}\n`);
         return this.assistantId;
     }
 

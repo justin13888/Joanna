@@ -15,7 +15,6 @@ import {
     startConversationSchema,
 } from "@/server/schemas";
 import { TRPCError } from "@trpc/server";
-import type { BackboardAPIError } from "backboard-sdk";
 
 export const messageRouter = createTRPCRouter({
     /**
@@ -35,6 +34,9 @@ export const messageRouter = createTRPCRouter({
                 return {
                     content: response.content,
                     timestamp: response.timestamp,
+                    // Termination signals for auto-ending conversations
+                    shouldTerminate: response.shouldTerminate,
+                    terminationReason: response.terminationReason,
                     // Include planning state for debugging (could be omitted in production)
                     debug: {
                         extractedMemoriesCount: response.planningState.extractedMemories.length,

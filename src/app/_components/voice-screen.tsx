@@ -104,6 +104,8 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 	const [currentConversationId, setCurrentConversationId] = useState<string | null>(
 		initialConversationId ?? null
 	);
+	// Track if conversation has ended (user said goodbye, etc.)
+	const [isConversationEnded, setIsConversationEnded] = useState(false);
 
 	// tRPC mutations for conversation and message APIs
 	const createConversation = api.conversation.create.useMutation();
@@ -267,6 +269,12 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 			setAiResponse(response.content);
 			setState("speaking");
 
+			// Check if conversation should end
+			if (response.shouldTerminate) {
+				console.log("[VoiceScreen] Conversation ended:", response.terminationReason);
+				setIsConversationEnded(true);
+			}
+
 			// Optionally use TTS for the response
 			try {
 				const ttsRes = await fetch("/api/tts", {
@@ -360,6 +368,12 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 			setAiResponse(response.content);
 			setState("speaking");
 
+			// Check if conversation should end
+			if (response.shouldTerminate) {
+				console.log("[VoiceScreen] Conversation ended:", response.terminationReason);
+				setIsConversationEnded(true);
+			}
+
 			// Optionally use TTS for the response
 			try {
 				const ttsRes = await fetch("/api/tts", {
@@ -448,61 +462,97 @@ export function VoiceScreen({ conversationId: initialConversationId }: VoiceScre
 					</button>
 				</div>
 
-				{inputMode === "voice" ? (
-					<>
-						<button
-							onPointerDown={startListening}
-							onPointerUp={stopListening}
-							className="select-none"
-						>
-							<Orb
-								isActive={state !== "idle"}
-								size={140}
-								volume={volume}
-							/>
-						</button>
-						<p className="text-xs text-stone-400">
-							{state === "idle" && "Hold the orb to speak"}
-							{state === "listening" && "Listening… release to stop"}
-							{state === "processing" && "Processing..."}
-							{state === "speaking" && "Speaking..."}
-						</p>
-					</>
-				) : (
-					<div className="w-full max-w-md px-4">
-						<div className="flex gap-2">
-							<input
-								type="text"
-								value={textInput}
-								onChange={(e) => setTextInput(e.target.value)}
-								onKeyDown={(e) => e.key === "Enter" && submitTextInput()}
-								placeholder="Type your message..."
-								className="flex-1 rounded-xl border border-theme-border bg-white px-4 py-3 text-sm text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-theme-primary-lighter"
-								disabled={state !== "idle"}
-							/>
-							<button
-								onClick={submitTextInput}
-								disabled={!textInput.trim() || state !== "idle"}
-								className="rounded-xl bg-theme-primary px-4 py-3 text-sm font-medium text-white transition-all hover:bg-theme-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
-							>
-								Send
-							</button>
+				{/* Show conversation ended UI or input controls */}
+				{isConversationEnded ? (
+					<div className="flex flex-col items-center gap-4">
+						<div className="flex items-center gap-2 text-theme-primary">
+							<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+								<title>Checkmark</title>
+								<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+								<polyline points="22 4 12 14.01 9 11.01" />
+							</svg>
+							<span className="font-medium">Conversation Ended</span>
 						</div>
-						<p className="mt-2 text-xs text-stone-400 text-center">
-							{state === "idle" && "Press Enter or click Send"}
-							{state === "processing" && "Processing..."}
-							{state === "speaking" && "Speaking..."}
+						<p className="text-sm text-stone-500 text-center max-w-xs">
+							Thanks for sharing! Your memories have been saved.
 						</p>
+						<button
+							type="button"
+							onClick={() => {
+								// Reset state and start a new conversation
+								setIsConversationEnded(false);
+								setCurrentConversationId(null);
+								resetVoice();
+								// Navigate to home to start fresh
+								window.history.replaceState(null, "", "/");
+							}}
+							className="rounded-full bg-theme-primary px-6 py-2.5 text-sm font-medium text-white transition-all hover:bg-theme-primary-dark"
+						>
+							Start New Conversation
+						</button>
 					</div>
-				)}
+				) : (
+					<>
+						{inputMode === "voice" ? (
+							<>
+								<button
+									type="button"
+									onPointerDown={startListening}
+									onPointerUp={stopListening}
+									className="select-none"
+								>
+									<Orb
+										isActive={state !== "idle"}
+										size={140}
+										volume={volume}
+									/>
+								</button>
+								<p className="text-xs text-stone-400">
+									{state === "idle" && "Hold the orb to speak"}
+									{state === "listening" && "Listening… release to stop"}
+									{state === "processing" && "Processing..."}
+									{state === "speaking" && "Speaking..."}
+								</p>
+							</>
+						) : (
+							<div className="w-full max-w-md px-4">
+								<div className="flex gap-2">
+									<input
+										type="text"
+										value={textInput}
+										onChange={(e) => setTextInput(e.target.value)}
+										onKeyDown={(e) => e.key === "Enter" && submitTextInput()}
+										placeholder="Type your message..."
+										className="flex-1 rounded-xl border border-theme-border bg-white px-4 py-3 text-sm text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-theme-primary-lighter"
+										disabled={state !== "idle"}
+									/>
+									<button
+										type="button"
+										onClick={submitTextInput}
+										disabled={!textInput.trim() || state !== "idle"}
+										className="rounded-xl bg-theme-primary px-4 py-3 text-sm font-medium text-white transition-all hover:bg-theme-primary-dark disabled:cursor-not-allowed disabled:opacity-50"
+									>
+										Send
+									</button>
+								</div>
+								<p className="mt-2 text-center text-xs text-stone-400">
+									{state === "idle" && "Press Enter or click Send"}
+									{state === "processing" && "Processing..."}
+									{state === "speaking" && "Speaking..."}
+								</p>
+							</div>
+						)}
 
-				{state === "idle" && transcript && (
-					<button
-						onClick={resetVoice}
-						className="rounded-full border border-theme-border px-4 py-1.5 text-sm text-stone-500 hover:bg-theme-bg-hover"
-					>
-						Start Over
-					</button>
+						{state === "idle" && transcript && (
+							<button
+								type="button"
+								onClick={resetVoice}
+								className="rounded-full border border-theme-border px-4 py-1.5 text-sm text-stone-500 hover:bg-theme-bg-hover"
+							>
+								Start Over
+							</button>
+						)}
+					</>
 				)}
 			</div>
 

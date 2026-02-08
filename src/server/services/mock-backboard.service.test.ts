@@ -76,6 +76,6 @@ describe("MockBackboardService", () => {
 
         const memories = await service.getMemories();
         expect(memories).toHaveLength(1);
-        expect(memories[0]?.content).toContain("Memory derived from");
+        expect(memories[0]?.content).toContain("My name is Justin");
     });
 });

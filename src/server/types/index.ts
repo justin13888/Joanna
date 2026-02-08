@@ -56,6 +56,14 @@ export interface AgentPlanningState {
     responseStrategy: string;
 }
 
+/** Conversation flow signals for termination */
+export type TerminationReason =
+    | "user_farewell" // User said goodbye/done
+    | "no_new_info" // User response has no new information
+    | "user_explicit_end" // User explicitly asked to end
+    | "natural_conclusion" // Conversation naturally concluded
+    | null;
+
 /** Result of memory synthesis from user input */
 export interface SynthesisResult {
     /** New memories extracted from this message */
@@ -67,8 +75,20 @@ export interface SynthesisResult {
     /** Topics that could benefit from elaboration */
     elaborationTopics: string[];
 
+    /** Topics from previous conversations to potentially revisit */
+    previousTopicsToRevisit: string[];
+
     /** Confidence score for the extraction (0-100) */
     confidence: number;
+
+    /** Whether the conversation should terminate */
+    shouldTerminate: boolean;
+
+    /** Reason for termination if applicable */
+    terminationReason: TerminationReason;
+
+    /** Whether the user's message contains minimal/no new information */
+    isMinimalResponse: boolean;
 }
 
 /** Response from the agent after processing a message */
@@ -81,6 +101,12 @@ export interface AgentResponse {
 
     /** Timestamp */
     timestamp: Date;
+
+    /** Whether the conversation should terminate after this response */
+    shouldTerminate: boolean;
+
+    /** Reason for termination if applicable */
+    terminationReason: TerminationReason;
 }
 
 // === Conversation DTOs ===

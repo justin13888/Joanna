@@ -35,7 +35,11 @@ const mockMemorySynthesisService = {
         ],
         followUpQuestions: ["How did your workout go?"],
         elaborationTopics: ["exercise routine", "fitness goals"],
+        previousTopicsToRevisit: [],
         confidence: 0.9,
+        shouldTerminate: false,
+        terminationReason: null,
+        isMinimalResponse: false,
     }),
 };
 
@@ -49,6 +53,14 @@ const mockBackboardService = {
         content: "That sounds great! Tell me more about your workout.",
         role: "assistant",
     }),
+    createMemory: vi.fn().mockResolvedValue({
+        id: "mem-1",
+        content: "test memory",
+        score: 1.0,
+        createdAt: new Date().toISOString(),
+        metadata: {},
+    }),
+    getMemories: vi.fn().mockResolvedValue([]),
 };
 
 describe("AgentService", () => {
