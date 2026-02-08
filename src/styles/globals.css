@@ -77,12 +77,7 @@ body {
 }
 
 .theme-joe .diary-bg {
-	background: radial-gradient(ellipse at 50% 40%,
-			#e4f4ec 0%,
-			#dceee4 40%,
-			#cde2d8 80%,
-			#c2dbcf 100%),
-		#dceee4;
+	background: transparent;
 }
 
 .theme-joe .notebook-lines {
@@ -288,12 +283,7 @@ body {
 
 /* ─── Background: Cream/Off-white with subtle purple hints ─── */
 .diary-bg {
-	background: radial-gradient(ellipse at 50% 40%,
-			#fdfcfb 0%,
-			#faf7f2 30%,
-			#f5f0ea 65%,
-			#ebe4f4 100%),
-		#faf7f2;
+	background: transparent;
 }
 
 /* ─── Paper texture using CSS noise ─── */

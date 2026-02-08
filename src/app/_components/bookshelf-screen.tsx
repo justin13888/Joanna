@@ -5,13 +5,16 @@ interface BookshelfProps {
 	selectedYear: number | null;
 }
 
+import { Snowglobe } from "./snowglobe";
+import { usePersona } from "./persona-context";
+
 /* Lighter wood palette */
 const WOOD_SHELF = {
 	base: "linear-gradient(to bottom, #b8956a, #a08050)",
 	shadow: "0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.25)",
 };
 
-/* Diary year books - lavender palette */
+/* Diary year books - lavender palette (Joanna) */
 const YEAR_BOOK_COLORS = [
 	{ bg: "from-[#c4b5e3] to-[#9b8abf]", text: "text-white/90" },
 	{ bg: "from-[#d8cfe8] to-[#b4a5d0]", text: "text-[#5a4a7a]" },
@@ -19,6 +22,16 @@ const YEAR_BOOK_COLORS = [
 	{ bg: "from-[#e0d8ec] to-[#c0b4d4]", text: "text-[#5a4a7a]" },
 	{ bg: "from-[#ccc0dc] to-[#a494c0]", text: "text-white/90" },
 	{ bg: "from-[#d4c8e0] to-[#a898c0]", text: "text-[#5a4a7a]" },
+];
+
+/* Diary year books - green palette (Joe) */
+const JOE_BOOK_COLORS = [
+	{ bg: "from-[#86efac] to-[#4ade80]", text: "text-[#14532d]" }, // green-300 -> green-400
+	{ bg: "from-[#bbf7d0] to-[#86efac]", text: "text-[#166534]" }, // green-200 -> green-300
+	{ bg: "from-[#4ade80] to-[#22c55e]", text: "text-white/90" }, // green-400 -> green-500
+	{ bg: "from-[#dcfce7] to-[#bbf7d0]", text: "text-[#14532d]" }, // green-100 -> green-200
+	{ bg: "from-[#86efac] to-[#22c55e]", text: "text-[#064e3b]" }, // green-300 -> green-500
+	{ bg: "from-[#bbf7d0] to-[#4ade80]", text: "text-[#14532d]" }, // green-200 -> green-400
 ];
 
 /* Decorative/blank books - varied muted colors */
@@ -35,8 +48,9 @@ const DECOR_BOOK_COLORS = [
 	"from-fuchsia-100 to-fuchsia-200",
 ];
 
-function getYearBookColor(year: number) {
-	return YEAR_BOOK_COLORS[year % YEAR_BOOK_COLORS.length] ?? YEAR_BOOK_COLORS[0]!;
+function getYearBookColor(year: number, isJoe: boolean) {
+	const colors = isJoe ? JOE_BOOK_COLORS : YEAR_BOOK_COLORS;
+	return colors[year % colors.length] ?? colors[0]!;
 }
 
 function getYearBookHeight(year: number) {
@@ -127,12 +141,14 @@ function YearBook({
 	year,
 	onSelect,
 	isPulled,
+	isJoe,
 }: {
 	year: number;
 	onSelect: () => void;
 	isPulled: boolean;
+	isJoe: boolean;
 }) {
-	const color = getYearBookColor(year);
+	const color = getYearBookColor(year, isJoe);
 	const height = getYearBookHeight(year);
 	return (
 		<button
@@ -203,6 +219,8 @@ const DECOR_COUNT_TOP = 15;
 const DECOR_COUNT_BOTTOM = 18;
 
 export function Bookshelf({ onSelectYear, selectedYear }: BookshelfProps) {
+	const { persona } = usePersona();
+	const isJoe = persona === "joe";
 	const thisYear = new Date().getFullYear();
 	const years = Array.from({ length: 6 }, (_, i) => thisYear - i);
 
@@ -258,6 +276,9 @@ export function Bookshelf({ onSelectYear, selectedYear }: BookshelfProps) {
 							colorClass={DECOR_BOOK_COLORS[i % DECOR_BOOK_COLORS.length]!}
 						/>
 					))}
+					<div className="ml-4 mb-[2px]">
+						<Snowglobe />
+					</div>
 				</div>
 				<ShelfPlank />
 
@@ -272,6 +293,7 @@ export function Bookshelf({ onSelectYear, selectedYear }: BookshelfProps) {
 							year={year}
 							onSelect={() => onSelectYear(year)}
 							isPulled={year === selectedYear}
+							isJoe={isJoe}
 						/>
 					))}
 				</div>

@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { Bookshelf } from "@/app/_components/bookshelf-screen";
 import { Diary } from "@/app/_components/diary";
+import { usePersona } from "../_components/persona-context";
 
 /* Vibrant gradients matching the shelf books */
 const BOOK_CSS_GRADIENTS = [
@@ -13,9 +14,20 @@ const BOOK_CSS_GRADIENTS = [
 	["#e9d5ff", "#a855f7"], // electric purple
 	["#f5f0ea", "#d8cfe8"], // cream/lavender mix
 ];
-function getColors(year: number) {
+
+const JOE_GRADIENTS = [
+	["#86efac", "#22c55e"], // green-300 / green-500
+	["#bbf7d0", "#4ade80"], // green-200 / green-400
+	["#4ade80", "#16a34a"], // green-400 / green-600
+	["#dcfce7", "#86efac"], // green-100 / green-300
+	["#86efac", "#15803d"], // green-300 / green-700
+	["#f0fdf4", "#bbf7d0"], // cream/green mix
+];
+
+function getColors(year: number, isJoe: boolean) {
+	const source = isJoe ? JOE_GRADIENTS : BOOK_CSS_GRADIENTS;
 	const pair =
-		BOOK_CSS_GRADIENTS[year % BOOK_CSS_GRADIENTS.length] ?? BOOK_CSS_GRADIENTS[0]!;
+		source[year % source.length] ?? source[0]!;
 	return { light: pair[0] ?? "#ffd93d", dark: pair[1] ?? "#ff9a3c" };
 }
 
@@ -32,6 +44,8 @@ function getColors(year: number) {
 type Anim = "idle" | "pulling" | "opening" | "open" | "closing" | "returning";
 
 export default function DiaryPage() {
+	const { persona } = usePersona();
+	const isJoe = persona === "joe";
 	const [selectedYear, setSelectedYear] = useState<number | null>(null);
 	const [anim, setAnim] = useState<Anim>("idle");
 	const [floatingYear, setFloatingYear] = useState<number | null>(null);
@@ -89,7 +103,7 @@ export default function DiaryPage() {
 	const bookGone = anim !== "idle";
 	const shelfGap = bookGone ? (floatingYear ?? selectedYear) : null;
 	const colors =
-		floatingYear !== null ? getColors(floatingYear) : { light: "#c4b5e3", dark: "#9b8abf" };
+		floatingYear !== null ? getColors(floatingYear, isJoe) : { light: isJoe ? "#86efac" : "#c4b5e3", dark: isJoe ? "#22c55e" : "#9b8abf" };
 
 	const showTurningBook = (anim === "pulling" || anim === "returning") && floatingYear !== null;
 	const showExpandingBook = (anim === "opening" || anim === "closing") && floatingYear !== null;
