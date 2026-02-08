@@ -93,10 +93,19 @@ export function VoiceScreen() {
 
 	// Debug: timestamp override
 	const [showTimePicker, setShowTimePicker] = useState(false);
-	const [recordingTimestamp, setRecordingTimestamp] = useState(() => {
+	const [useCurrentTime, setUseCurrentTime] = useState(true);
+	const [manualTimestamp, setManualTimestamp] = useState(() => {
 		const now = new Date();
 		return now.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:MM
 	});
+
+	// Get effective timestamp (current or manual)
+	const getRecordingTimestamp = () => {
+		if (useCurrentTime) {
+			return new Date().toISOString();
+		}
+		return new Date(manualTimestamp).toISOString();
+	};
 
 	const wsRef = useRef<WebSocket | null>(null);
 	const audioCtxRef = useRef<AudioContext | null>(null);
@@ -299,8 +308,8 @@ export function VoiceScreen() {
 			{/* Debug: Timestamp override button */}
 			<div className="absolute bottom-4 right-4 z-20">
 				{showTimePicker ? (
-					<div className="rounded-xl bg-white/95 backdrop-blur border border-violet-200 shadow-lg p-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-						<div className="flex items-center justify-between mb-2">
+					<div className="rounded-xl bg-white/95 backdrop-blur border border-violet-200 shadow-lg p-3 animate-in fade-in slide-in-from-bottom-2 duration-200 min-w-[220px]">
+						<div className="flex items-center justify-between mb-3">
 							<span className="text-xs font-medium text-stone-500">Recording Time</span>
 							<button
 								onClick={() => setShowTimePicker(false)}
@@ -311,14 +320,44 @@ export function VoiceScreen() {
 								</svg>
 							</button>
 						</div>
-						<input
-							type="datetime-local"
-							value={recordingTimestamp}
-							onChange={(e) => setRecordingTimestamp(e.target.value)}
-							className="w-full rounded-lg border border-violet-200 px-2 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
-						/>
-						<p className="mt-1.5 text-[10px] text-stone-400">
-							Debug: Override timestamp for backfilling
+
+						{/* Toggle buttons */}
+						<div className="flex rounded-lg bg-stone-100 p-0.5 mb-3">
+							<button
+								onClick={() => setUseCurrentTime(true)}
+								className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all ${useCurrentTime
+										? "bg-white text-violet-600 shadow-sm"
+										: "text-stone-500 hover:text-stone-700"
+									}`}
+							>
+								Current
+							</button>
+							<button
+								onClick={() => setUseCurrentTime(false)}
+								className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all ${!useCurrentTime
+										? "bg-white text-violet-600 shadow-sm"
+										: "text-stone-500 hover:text-stone-700"
+									}`}
+							>
+								Manual
+							</button>
+						</div>
+
+						{useCurrentTime ? (
+							<p className="text-sm text-stone-600 text-center py-2">
+								Using current time
+							</p>
+						) : (
+							<input
+								type="datetime-local"
+								value={manualTimestamp}
+								onChange={(e) => setManualTimestamp(e.target.value)}
+								className="w-full rounded-lg border border-violet-200 px-2 py-1.5 text-sm text-stone-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
+							/>
+						)}
+
+						<p className="mt-2 text-[10px] text-stone-400 text-center">
+							Debug: for backfilling data
 						</p>
 					</div>
 				) : (
