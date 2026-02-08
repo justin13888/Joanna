@@ -13,7 +13,7 @@ import {
 	memoriesToDiaryEntries,
 } from "./diary-data";
 import { api } from "@/trpc/react";
-import { usePersona } from "./persona-context";
+
 const PAGE_HEIGHT_NUM = 620;
 const PAGE_HEIGHT = `${PAGE_HEIGHT_NUM}px`;
 const PAGE_WIDTH = 420;
@@ -97,37 +97,9 @@ interface DiaryProps {
 
 
 export function Diary({ year, onBack }: DiaryProps) {
-	const { persona } = usePersona();
-	const isJoe = persona === "joe";
 	const [selectedMonth, setSelectedMonth] = useState(1);
 	const [selectedYear, setSelectedYear] = useState(year ?? new Date().getFullYear());
 	const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
-
-	// Theme colors
-	const colors = {
-		closeBtn: isJoe ? "bg-green-100/60 text-green-800 hover:bg-green-100" : "bg-violet-100/60 text-[#5a4a7a] hover:bg-violet-100",
-		tabActive: isJoe ? "border-green-300 bg-[#f0fdf4] text-green-800" : "border-[#c4b8d6] bg-[#f5f0ea] text-[#5a4a7a]",
-		tabInactive: isJoe ? "border-green-400 bg-green-400 text-green-50 hover:bg-green-300" : "border-[#b8acd0] bg-[#b8aad2] text-[#ece6f4] hover:bg-[#c8bce0]",
-		pageBorder: isJoe ? "border-green-300" : "border-[#c4b8d6]",
-		navBtn: isJoe ? "text-green-400 hover:bg-green-100 hover:text-green-800" : "text-[#8a7ea0] hover:bg-[#e8e0f2] hover:text-[#5a4a7a]",
-		headerText: isJoe ? "text-green-900" : "text-[#4a3a6a]",
-		subText: isJoe ? "text-green-700" : "text-[#8a7ea0]",
-		dayText: isJoe ? "text-green-700" : "text-[#8a7ea0]",
-		cell: {
-			selected: isJoe ? "border-green-500 bg-green-200 shadow-green-300/50" : "border-[#9b8dba] bg-[#d8cfe8] shadow-[#c4b8d6]/50",
-			hasEntry: isJoe ? "border-green-200 bg-green-50 hover:border-green-300 hover:bg-green-100 hover:shadow-green-300/30" : "border-[#d0c4e0] bg-[#ede6f5] hover:border-[#b0a4c4] hover:bg-[#ddd4eb] hover:shadow-[#c4b8d6]/30",
-			default: "border-transparent",
-			textSelected: isJoe ? "text-[#064e3b]" : "text-[#3d2d5c]",
-			textEntry: isJoe ? "text-green-800 group-hover:text-[#064e3b]" : "text-[#5a4a7a] group-hover:text-[#3d2d5c]",
-			textDefault: isJoe ? "text-green-300" : "text-[#b0a4c4]",
-			dotSelected: isJoe ? "bg-[#064e3b]" : "bg-[#5a4a7a]",
-			dotEntry: isJoe ? "bg-green-400" : "bg-[#9b8dba]",
-		},
-		entryTitle: isJoe ? "border-green-200 text-green-800" : "border-[#d0c4e0] text-[#4a3a6a]",
-		bulletText: isJoe ? "text-green-900" : "text-[#4a3d5e]",
-		bulletDot: isJoe ? "bg-green-300" : "bg-[#b0a4c4]",
-		emptyText: isJoe ? "text-green-400" : "text-[#a89aba]",
-	};
 
 	// Reset when a different year-book is opened
 	useEffect(() => {
@@ -255,7 +227,7 @@ export function Diary({ year, onBack }: DiaryProps) {
 				{onBack && (
 					<button
 						onClick={onBack}
-						className={`mb-4 flex items-center gap-2 self-end rounded-full px-4 py-2 text-sm font-medium transition-all active:scale-95 ${colors.closeBtn}`}
+						className="mb-4 flex items-center gap-2 self-end rounded-full bg-[var(--theme-primary-lightest)]/60 px-4 py-2 text-sm font-medium text-[var(--diary-text-primary)] transition-all hover:bg-[var(--theme-primary-lightest)] active:scale-95"
 						type="button"
 					>
 						<svg
@@ -291,8 +263,8 @@ export function Diary({ year, onBack }: DiaryProps) {
 								type="button"
 								onClick={() => handleMonthTab(index)}
 								className={`month-tab -mr-px relative rounded-l-lg border border-r-0 px-3 py-2 text-lg font-semibold sm:px-4 sm:text-xl ${selectedMonth === index
-									? `month-tab-active z-20 ${colors.tabActive}`
-									: `month-tab-inactive ${colors.tabInactive}`
+									? "month-tab-active z-20 border-[var(--diary-border)] bg-[var(--diary-tab-active-bg)] text-[var(--diary-text-primary)]"
+									: "month-tab-inactive border-[var(--diary-border)] bg-[var(--diary-tab-inactive-bg)] text-[var(--diary-tab-inactive-text)] hover:bg-[var(--diary-tab-inactive-bg-hover)] hover:text-[var(--diary-tab-hover-text)]"
 									}`}
 							>
 								{month.slice(0, 3)}
@@ -334,7 +306,7 @@ export function Diary({ year, onBack }: DiaryProps) {
 						>
 							{/* Left Page: Mini Calendar */}
 							<div
-								className={`page-left paper-texture relative z-20 flex flex-col rounded-l-2xl border border-r-0 p-8 sm:p-10 ${colors.pageBorder}`}
+								className="page-left paper-texture relative z-20 flex flex-col rounded-l-2xl border border-r-0 border-[var(--diary-border)] p-8 sm:p-10"
 								style={{
 									width: PAGE_WIDTH,
 									height: PAGE_HEIGHT,
@@ -353,17 +325,17 @@ export function Diary({ year, onBack }: DiaryProps) {
 										<button
 											type="button"
 											onClick={prevMonth}
-											className={`rounded-lg px-3 py-1.5 text-2xl transition-colors ${colors.navBtn}`}
+											className="rounded-lg px-3 py-1.5 text-2xl text-[var(--diary-text-secondary)] transition-colors hover:bg-[var(--theme-primary-lightest)] hover:text-[var(--diary-text-primary)]"
 										>
 											&#8249;
 										</button>
-										<h2 className={`font-semibold text-2xl sm:text-3xl ${colors.headerText}`}>
+										<h2 className="font-semibold text-[var(--diary-text-primary)] text-2xl sm:text-3xl">
 											{months[selectedMonth]} {selectedYear}
 										</h2>
 										<button
 											type="button"
 											onClick={nextMonth}
-											className={`rounded-lg px-3 py-1.5 text-2xl transition-colors ${colors.navBtn}`}
+											className="rounded-lg px-3 py-1.5 text-2xl text-[var(--diary-text-secondary)] transition-colors hover:bg-[var(--theme-primary-lightest)] hover:text-[var(--diary-text-primary)]"
 										>
 											&#8250;
 										</button>
@@ -374,7 +346,7 @@ export function Diary({ year, onBack }: DiaryProps) {
 										{weekdays.map((day) => (
 											<div
 												key={day}
-												className={`py-1 text-center text-lg font-semibold ${colors.dayText}`}
+												className="py-1 text-center text-lg font-semibold text-[var(--diary-text-secondary)]"
 											>
 												{day}
 											</div>
@@ -406,18 +378,18 @@ export function Diary({ year, onBack }: DiaryProps) {
 															setSelectedEntry(entry);
 													}}
 													className={`calendar-cell group relative flex flex-col items-center justify-center rounded-lg border transition-all duration-200 ${isSelected
-														? colors.cell.selected
+														? "border-[var(--diary-cell-selected-border)] bg-[var(--diary-cell-selected-bg)] shadow-md shadow-[var(--diary-border)]/50"
 														: hasEntry
-															? `cursor-pointer ${colors.cell.hasEntry}`
-															: `cursor-default ${colors.cell.default}`
+															? "cursor-pointer border-[var(--diary-border)] bg-[var(--diary-cell-hover-bg)] hover:border-[var(--diary-text-tertiary)] hover:bg-[var(--theme-primary-lightest)] hover:shadow-md hover:shadow-[var(--diary-border)]/30"
+															: "cursor-default border-transparent"
 														}`}
 												>
 													<span
 														className={`text-xl sm:text-2xl ${isSelected
-															? `font-bold ${colors.cell.textSelected}`
+															? "font-bold text-[var(--diary-text-primary)] brightness-75"
 															: hasEntry
-																? `font-semibold ${colors.cell.textEntry}`
-																: colors.cell.textDefault
+																? "font-semibold text-[var(--diary-text-primary)] group-hover:text-[var(--diary-text-primary)]"
+																: "text-[var(--diary-text-tertiary)]"
 															}`}
 													>
 														{day}
@@ -425,8 +397,8 @@ export function Diary({ year, onBack }: DiaryProps) {
 													{hasEntry && (
 														<span
 															className={`mt-0.5 h-1.5 w-1.5 rounded-full transition-transform group-hover:scale-150 ${isSelected
-																? colors.cell.dotSelected
-																: colors.cell.dotEntry
+																? "bg-[var(--diary-text-primary)] brightness-75"
+																: "bg-[var(--diary-text-tertiary)]"
 																}`}
 														/>
 													)}
@@ -471,7 +443,7 @@ export function Diary({ year, onBack }: DiaryProps) {
 
 							{/* Right Page: Diary Entry */}
 							<div
-								className={`page-right paper-texture relative z-20 flex flex-col rounded-r-2xl border border-l-0 p-8 sm:p-10 ${colors.pageBorder}`}
+								className="page-right paper-texture relative z-20 flex flex-col rounded-r-2xl border border-l-0 border-[var(--diary-border)] p-8 sm:p-10"
 								style={{
 									width: PAGE_WIDTH,
 									height: PAGE_HEIGHT,
@@ -487,7 +459,7 @@ export function Diary({ year, onBack }: DiaryProps) {
 								>
 									{selectedEntry ? (
 										<>
-											<h2 className={`mb-4 shrink-0 border-b-2 pb-3 font-semibold text-2xl sm:text-3xl ${colors.entryTitle}`}>
+											<h2 className="mb-4 shrink-0 border-b-2 border-[var(--diary-border)] pb-3 font-semibold text-2xl sm:text-3xl text-[var(--diary-text-primary)]">
 												{formatDateLong(
 													selectedEntry.date,
 												)}
@@ -497,12 +469,12 @@ export function Diary({ year, onBack }: DiaryProps) {
 													(bullet) => (
 														<p
 															key={bullet}
-															className={`flex items-end text-xl sm:text-2xl ${colors.bulletText}`}
+															className="flex items-end text-xl sm:text-2xl text-[var(--diary-text-primary)]"
 															style={{
 																minHeight: "36px",
 															}}
 														>
-															<span className={`mb-[8px] mr-2.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${colors.bulletDot}`} />
+															<span className="mb-[8px] mr-2.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--diary-text-tertiary)]" />
 															<span>{bullet}</span>
 														</p>
 													),
@@ -511,7 +483,7 @@ export function Diary({ year, onBack }: DiaryProps) {
 										</>
 									) : (
 										<div className="notebook-lines flex flex-1 flex-col items-center justify-center">
-											<p className={`text-xl italic sm:text-2xl ${colors.emptyText}`}>
+											<p className="text-xl italic sm:text-2xl text-[var(--diary-text-tertiary)]">
 												Pick a day to read...
 											</p>
 										</div>

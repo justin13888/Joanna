@@ -49,6 +49,25 @@
 	--theme-ring: 196 181 253;
 	--theme-bg-hover: 245 243 255;
 	/* violet-50 */
+
+	/* ── Diary Semantic Colors (Joanna - Purple) ── */
+	--diary-text-primary: #5a4a7a;
+	--diary-text-secondary: #8a7ea0;
+	--diary-text-tertiary: #b0a4c4;
+	--diary-border: #c4b8d6;
+	--diary-tab-inactive-bg: #b8aad2;
+	--diary-tab-inactive-text: #ece6f4;
+	--diary-cell-selected-bg: #d8cfe8;
+	--diary-cell-selected-border: #9b8dba;
+	--diary-cell-selected-bg: #d8cfe8;
+	--diary-cell-selected-border: #9b8dba;
+	--diary-cell-hover-bg: #ede6f5;
+
+	--diary-paper-bg: #f5f0ea;
+
+	--diary-tab-active-bg: #f5f0ea;
+	--diary-tab-inactive-bg-hover: #c8bce0;
+	--diary-tab-hover-text: #ffffff;
 }
 
 body {
@@ -73,6 +92,36 @@ body {
 	--theme-border: 134 239 172;
 	--theme-ring: 134 239 172;
 	--theme-bg-hover: 240 253 244;
+	/* green-50 */
+
+	/* ── Diary Semantic Colors (Joe - Green) ── */
+	--diary-text-primary: #166534;
+	/* green-800 */
+	--diary-text-secondary: #15803d;
+	/* green-700 */
+	--diary-text-tertiary: #86efac;
+	/* green-300 */
+	--diary-border: #86efac;
+	/* green-300 */
+	--diary-tab-inactive-bg: #4ade80;
+	/* green-400 */
+	--diary-tab-inactive-text: #f0fdf4;
+	/* green-50 */
+	--diary-cell-selected-bg: #bbf7d0;
+	/* green-200 */
+	--diary-cell-selected-border: #22c55e;
+	/* green-500 */
+	--diary-cell-hover-bg: #dcfce7;
+	/* green-100 */
+
+	--diary-paper-bg: #ffffff;
+	/* white/bright */
+
+	--diary-tab-active-bg: #f0fdf4;
+	/* green-50 */
+	--diary-tab-inactive-bg-hover: #86efac;
+	/* green-300 */
+	--diary-tab-hover-text: #f0fdf4;
 	/* green-50 */
 }
 
@@ -289,7 +338,7 @@ body {
 /* ─── Paper texture using CSS noise ─── */
 .paper-texture {
 	position: relative;
-	background-color: #f5f0ea;
+	background-color: var(--diary-paper-bg);
 }
 
 .paper-texture::before {
