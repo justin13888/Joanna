@@ -286,14 +286,14 @@ body {
    DIARY UI STYLES
    ════════════════════════════════════════════ */
 
-/* ─── Background ─── */
+/* ─── Background: Cream/Off-white with subtle purple hints ─── */
 .diary-bg {
 	background: radial-gradient(ellipse at 50% 40%,
-			#ece4f4 0%,
-			#e4dced 40%,
-			#d8cde2 80%,
-			#cfc2db 100%),
-		#e4dced;
+			#fdfcfb 0%,
+			#faf7f2 30%,
+			#f5f0ea 65%,
+			#ebe4f4 100%),
+		#faf7f2;
 }
 
 /* ─── Paper texture using CSS noise ─── */
@@ -549,7 +549,133 @@ body {
 	}
 }
 
-/* Content fade-in after flip */
+/* ─── Bookshelf ↔ Diary transitions ─── */
+
+/* ══ SMALL BOOK: rise + turn 90° / turn back + return ══ */
+
+@keyframes book-pull-turn {
+	0% {
+		transform: translateY(8vh) scale(0.85);
+		opacity: 0;
+	}
+
+	30% {
+		transform: translateY(0) scale(1);
+		opacity: 1;
+	}
+
+	100% {
+		transform: translateY(0) scale(1);
+		opacity: 1;
+	}
+}
+
+@keyframes book-turn-return {
+	0% {
+		transform: translateY(0) scale(1);
+		opacity: 1;
+	}
+
+	70% {
+		transform: translateY(0) scale(1);
+		opacity: 1;
+	}
+
+	100% {
+		transform: translateY(8vh) scale(0.85);
+		opacity: 0;
+	}
+}
+
+/* ══ WRAPPER: book-size → diary-size / diary-size → book-size ══ */
+
+@keyframes book-expand {
+	0% {
+		width: 80px;
+		height: 220px;
+		border-radius: 6px;
+	}
+
+	50% {
+		width: 400px;
+		height: 400px;
+		border-radius: 12px;
+	}
+
+	100% {
+		width: 930px;
+		height: 680px;
+		border-radius: 16px;
+	}
+}
+
+@keyframes book-shrink {
+	0% {
+		width: 930px;
+		height: 680px;
+		border-radius: 16px;
+	}
+
+	50% {
+		width: 400px;
+		height: 400px;
+		border-radius: 12px;
+	}
+
+	100% {
+		width: 80px;
+		height: 220px;
+		border-radius: 6px;
+	}
+}
+
+/* ══ FRONT COVER: hinges at left (spine), swings open to the left ══ */
+
+@keyframes cover-open {
+	0% {
+		transform: rotateY(0deg);
+		box-shadow: 4px 4px 16px rgba(0, 0, 0, 0.2);
+	}
+
+	30% {
+		transform: rotateY(-55deg);
+		box-shadow: 8px 4px 20px rgba(0, 0, 0, 0.15);
+	}
+
+	60% {
+		transform: rotateY(-120deg);
+		box-shadow: 4px 2px 12px rgba(0, 0, 0, 0.1);
+	}
+
+	100% {
+		transform: rotateY(-180deg);
+		box-shadow: none;
+	}
+}
+
+@keyframes cover-close {
+	0% {
+		transform: rotateY(-180deg);
+		box-shadow: none;
+	}
+
+	40% {
+		transform: rotateY(-120deg);
+		box-shadow: 4px 2px 12px rgba(0, 0, 0, 0.1);
+	}
+
+	70% {
+		transform: rotateY(-55deg);
+		box-shadow: 8px 4px 20px rgba(0, 0, 0, 0.15);
+	}
+
+	100% {
+		transform: rotateY(0deg);
+		box-shadow: 4px 4px 16px rgba(0, 0, 0, 0.2);
+	}
+}
+
+/* Content fade-in / fade-out */
 @keyframes fade-in {
 	0% {
 		opacity: 0;
@@ -557,6 +683,39 @@ body {
 
 	100% {
 		opacity: 1;
+	}
+}
+
+@keyframes fade-out {
+	0% {
+		opacity: 1;
+	}
+
+	100% {
+		opacity: 0;
+	}
+}
+
+@keyframes spiral-appear {
+
+	0%,
+	80% {
+		opacity: 0;
+	}
+
+	100% {
+		opacity: 1;
+	}
+}
+
+@keyframes spiral-disappear {
+	0% {
+		opacity: 1;
+	}
+
+	40%,
+	100% {
+		opacity: 0;
 	}
 }
 
@@ -580,4 +739,17 @@ body {
 
 .notebook-lines::-webkit-scrollbar-thumb:hover {
 	background: #a898be;
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.scrollbar-hide::-webkit-scrollbar {
+	display: none;
+}
+
+/* Hide scrollbar for IE, Edge and Firefox */
+.scrollbar-hide {
+	-ms-overflow-style: none;
+	/* IE and Edge */
+	scrollbar-width: none;
+	/* Firefox */
 }
