@@ -87,10 +87,24 @@ function HoleRings({
 	);
 }
 
-export function Diary() {
+interface DiaryProps {
+	year?: number;
+	onBack?: () => void;
+}
+
+export function Diary({ year, onBack }: DiaryProps) {
 	const [selectedMonth, setSelectedMonth] = useState(1);
-	const [selectedYear, setSelectedYear] = useState(2026);
+	const [selectedYear, setSelectedYear] = useState(year ?? new Date().getFullYear());
 	const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
+
+	// Reset when a different year-book is opened
+	useEffect(() => {
+		if (year !== undefined) {
+			setSelectedYear(year);
+			setSelectedMonth(0); // January
+			setSelectedEntry(null);
+		}
+	}, [year]);
 	const [isFlipping, setIsFlipping] = useState(false);
 	const [flipDirection, setFlipDirection] = useState<"forward" | "backward">(
 		"forward",
@@ -186,7 +200,31 @@ export function Diary() {
 	);
 
 	return (
-		<div className="diary-bg flex min-h-screen items-center justify-center p-4 font-patrick sm:p-8">
+		<div className="diary-bg flex flex-col items-center rounded-2xl p-4 font-patrick sm:p-6">
+			{/* Close / put book back */}
+			{onBack && (
+				<button
+					onClick={onBack}
+					className="mb-4 flex items-center gap-2 self-end rounded-full bg-violet-100/60 px-4 py-2 text-sm font-medium text-[#5a4a7a] transition-all hover:bg-violet-100 active:scale-95"
+					type="button"
+				>
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						width="14"
+						height="14"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="2"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					>
+						<path d="M18 6 6 18" />
+						<path d="m6 6 12 12" />
+					</svg>
+					Close book
+				</button>
+			)}
 			<div
 				className="book-container flex items-stretch"
 				style={{ perspective: "1200px" }}
