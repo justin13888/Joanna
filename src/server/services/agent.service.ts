@@ -167,10 +167,30 @@ export class AgentService {
             throw new Error("Conversation not found");
         }
 
+        // Retrieve recent memories to personalize the greeting
+        // We get the last 5 memories to provide some context on what's been happening
+        let recentMemories: RetrievedMemory[] = [];
+        try {
+            recentMemories = await this.backboardService.getMemories({ limit: 5 });
+            console.log(`[Agent] Retrieved ${recentMemories.length} memories for greeting context`);
+        } catch (error) {
+            console.warn("[Agent] Failed to retrieve memories for greeting:", error);
+        }
+
+        // Build the greeting prompt with context
+        let promptContent = JOANNA_GREETING_PROMPT;
+        if (recentMemories.length > 0) {
+            promptContent += "\n\n---";
+            promptContent += "\nContext from recent conversations (use to personalize greeting if relevant):";
+            for (const memory of recentMemories) {
+                promptContent += `\n- ${memory.content}`;
+            }
+        }
+
         // Get greeting from the assistant
         const response = await this.backboardService.addMessage({
             threadId: backboardThreadId,
-            content: JOANNA_GREETING_PROMPT,
+            content: promptContent,
             memoryMode: "Readonly", // Read memories but don't store the greeting prompt
             systemPrompt: JOANNA_SYSTEM_PROMPT,
         });
@@ -186,7 +206,7 @@ export class AgentService {
         const planningState: AgentPlanningState = {
             extractedMemories: [],
             followUpQuestions: [],
-            retrievedContext: [],
+            retrievedContext: recentMemories,
             responseStrategy: "initial_greeting",
         };
 

@@ -27,7 +27,7 @@ export default function MemoryDebugPage() {
                 <div>
                     <h1 className="text-2xl font-bold text-stone-800">Memory Debug</h1>
                     <p className="text-stone-500">
-                        Introspect MockBackboardService internal state
+                        Introspect Backboard service state
                     </p>
                 </div>
                 <div className="flex gap-3">
@@ -66,7 +66,12 @@ export default function MemoryDebugPage() {
                         <h2 className="mb-4 text-lg font-bold text-stone-800 border-b pb-2">
                             Overview
                         </h2>
-                        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                        <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+                            <StatCard
+                                label="Service Type"
+                                value={data.type === "MockBackboardService" ? "Mock" : "Real"}
+                                sub={data.type}
+                            />
                             <StatCard
                                 label="Assistants"
                                 value={Object.keys(data.assistants || {}).length}
@@ -80,7 +85,23 @@ export default function MemoryDebugPage() {
                                 value={data.currentAssistantId ? "Set" : "Null"}
                                 sub={data.currentAssistantId}
                             />
+                            {data.memoryStats && (
+                                <StatCard
+                                    label="Total Memories"
+                                    value={data.memoryStats.totalMemories}
+                                />
+                            )}
                         </div>
+                        {data.info && (
+                            <div className="mt-4 text-sm text-stone-500 italic">
+                                {data.info}
+                            </div>
+                        )}
+                        {data.error && (
+                            <div className="mt-4 text-sm text-red-500">
+                                Error: {data.error}
+                            </div>
+                        )}
                     </section>
 
                     {/* Memories */}

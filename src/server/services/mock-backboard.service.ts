@@ -396,8 +396,9 @@ export class MockBackboardService implements IBackboardService {
         this.currentAssistantId = null;
     }
 
-    getDebugState(): Record<string, any> {
+    async getDebugState(): Promise<Record<string, any>> {
         return {
+            type: "MockBackboardService",
             assistants: Object.fromEntries(this.assistants),
             threads: Object.fromEntries(this.threads),
             messages: Object.fromEntries(this.messages),

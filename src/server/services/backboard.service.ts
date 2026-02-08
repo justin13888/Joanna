@@ -100,7 +100,7 @@ export interface IBackboardService {
     /**
      * Get debug state of the service.
      */
-    getDebugState(): Record<string, any>;
+    getDebugState(): Promise<Record<string, any>>;
 }
 
 export class BackboardService implements IBackboardService {
@@ -276,13 +276,68 @@ export class BackboardService implements IBackboardService {
         });
     }
 
-    getDebugState(): Record<string, any> {
-        return {
+    async getDebugState(): Promise<Record<string, any>> {
+        const debugState: Record<string, any> = {
             type: "RealBackboardService",
             assistantId: this.assistantId,
+            currentAssistantId: this.assistantId,
             llmProvider: this.llmProvider,
             llmModel: this.llmModel,
-            info: "Real Backboard service does not expose internal memory state.",
+            memories: {},
+            threads: {},
+            assistants: {},
         };
+
+        // Try to fetch actual data from Backboard API if assistant is initialized
+        if (this.assistantId) {
+            const errors: string[] = [];
+
+            // Fetch memories from the API
+            try {
+                const memories = await this.getMemories({ limit: 100 });
+                // Format memories in the same structure as MockBackboardService
+                debugState.memories = {
+                    [this.assistantId]: memories.map(m => ({
+                        id: m.id,
+                        content: m.content,
+                        score: m.relevanceScore,
+                        createdAt: m.createdAt.toISOString(),
+                    })),
+                };
+            } catch (error) {
+                errors.push(`Memories: ${error instanceof Error ? error.message : String(error)}`);
+            }
+
+            // Fetch memory stats (optional, might not be available)
+            try {
+                const stats = await this.getMemoryStats();
+                debugState.memoryStats = stats;
+            } catch (error) {
+                // Memory stats is optional - don't treat as critical error
+                debugState.memoryStatsError = error instanceof Error ? error.message : String(error);
+            }
+
+            // Fetch assistant info
+            try {
+                const assistant = await this.getAssistant(this.assistantId);
+                debugState.assistants = {
+                    [this.assistantId]: assistant,
+                };
+            } catch (error) {
+                errors.push(`Assistant: ${error instanceof Error ? error.message : String(error)}`);
+            }
+
+            // Note: threads are not fetchable from the real API without storing them
+            debugState.threads = {};
+
+            if (errors.length > 0) {
+                debugState.error = errors.join("; ");
+            }
+            debugState.info = "Live data fetched from Backboard API.";
+        } else {
+            debugState.info = "Assistant not initialized. No data available.";
+        }
+
+        return debugState;
     }
 }
