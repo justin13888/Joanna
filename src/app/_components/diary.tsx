@@ -13,6 +13,7 @@ import {
 	memoriesToDiaryEntries,
 } from "./diary-data";
 import { api } from "@/trpc/react";
+import { PersonaToggle } from "./persona-toggle";
 const PAGE_HEIGHT_NUM = 620;
 const PAGE_HEIGHT = `${PAGE_HEIGHT_NUM}px`;
 const PAGE_WIDTH = 420;
@@ -202,7 +203,12 @@ export function Diary() {
 	);
 
 	return (
-		<div className="diary-bg flex min-h-screen items-center justify-center p-4 font-patrick sm:p-8">
+		<div className="diary-bg relative flex min-h-screen items-center justify-center p-4 font-patrick sm:p-8">
+			{/* ── Persona Toggle (top-right) ── */}
+			<div className="absolute top-4 right-4 z-50">
+				<PersonaToggle />
+			</div>
+
 			<div
 				className="book-container flex items-stretch"
 				style={{ perspective: "1200px" }}
