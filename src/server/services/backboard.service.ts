@@ -100,13 +100,13 @@ export class BackboardService implements IBackboardService {
     constructor(config: {
         apiKey: string;
         assistantId?: string;
-        llmProvider?: string;
-        llmModel?: string;
+        llmProvider: string;
+        llmModel: string;
     }) {
         this.client = new BackboardClient({ apiKey: config.apiKey });
         this.assistantId = config.assistantId ?? null;
-        this.llmProvider = config.llmProvider ?? "google";
-        this.llmModel = config.llmModel ?? "gemini-2.0-flash";
+        this.llmProvider = config.llmProvider;
+        this.llmModel = config.llmModel;
     }
 
     // === Assistant Management ===
