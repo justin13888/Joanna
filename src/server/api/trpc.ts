@@ -15,11 +15,12 @@ import { env } from "@/env";
 import {
 	AgentService,
 	AuthService,
-	BackboardService,
 	ConversationService,
 	MemoryRetrievalService,
 	MemorySynthesisService,
 } from "@/server/services";
+import { MockBackboardService, type LLMConfig } from "@/server/services/mock-backboard.service";
+import type { IBackboardService } from "@/server/services/backboard.service";
 import { JOANNA_SYSTEM_PROMPT } from "@/server/prompts/journal-assistant";
 
 /**
@@ -36,16 +37,22 @@ import { JOANNA_SYSTEM_PROMPT } from "@/server/prompts/journal-assistant";
  */
 
 // Initialize services as singletons
-let backboardService: BackboardService | null = null;
+let backboardService: IBackboardService | null = null;
 let authService: AuthService | null = null;
 
-function getBackboardService(): BackboardService {
+function getBackboardService(): IBackboardService {
 	if (!backboardService) {
-		backboardService = new BackboardService({
-			apiKey: env.BACKBOARD_API_KEY,
+		// Use MockBackboardService with real Gemini LLM for responses
+		// while keeping in-memory thread/memory storage
+		const llmConfig: LLMConfig = {
+			provider: "google",
+			model: "gemini-2.0-flash",
+			apiKey: env.GOOGLE_API_KEY,
+		};
+
+		backboardService = new MockBackboardService({
 			assistantId: env.BACKBOARD_ASSISTANT_ID,
-			llmProvider: env.LLM_PROVIDER,
-			llmModel: env.LLM_MODEL,
+			llm: llmConfig,
 		});
 	}
 	return backboardService;

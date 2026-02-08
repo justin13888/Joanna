@@ -13,6 +13,17 @@ import type {
 } from "@/server/types";
 import type { IBackboardService } from "./backboard.service";
 import { randomUUID } from "node:crypto";
+import { GoogleGenAI } from "@google/genai";
+
+/**
+ * LLM configuration for real inference (optional).
+ * If provided, MockBackboardService uses real LLM for responses.
+ */
+export interface LLMConfig {
+    provider: "google";
+    model: string;  // e.g., "gemini-2.0-flash"
+    apiKey: string;
+}
 
 export class MockBackboardService implements IBackboardService {
     private assistants: Map<string, Assistant> = new Map();
@@ -20,13 +31,24 @@ export class MockBackboardService implements IBackboardService {
     private messages: Map<string, { role: "user" | "assistant"; content: string }[]> = new Map();
     private memories: Map<string, Memory[]> = new Map();
     private currentAssistantId: string | null = null;
+    private currentSystemPrompt: string | null = null;
+
+    // LLM config for real inference
+    private llmConfig: LLMConfig | null = null;
+    private genAI: GoogleGenAI | null = null;
 
     constructor(
         config: {
             apiKey?: string;
             assistantId?: string;
+            llm?: LLMConfig;
         } = {},
     ) {
+        // Initialize LLM if config provided
+        if (config.llm) {
+            this.llmConfig = config.llm;
+            this.genAI = new GoogleGenAI({ apiKey: config.llm.apiKey });
+        }
         if (config.assistantId) {
             this.currentAssistantId = config.assistantId;
             // Also create the mock assistant object so getAssistant works
@@ -47,6 +69,9 @@ export class MockBackboardService implements IBackboardService {
     // === Assistant Management ===
 
     async ensureAssistant(config: AssistantConfig): Promise<string> {
+        // Store the system prompt for use in LLM calls
+        this.currentSystemPrompt = config.systemPrompt;
+
         if (this.currentAssistantId && this.assistants.has(this.currentAssistantId)) {
             return this.currentAssistantId;
         }
@@ -129,16 +154,22 @@ export class MockBackboardService implements IBackboardService {
         // Store user message
         threadMessages.push({ role: "user", content: params.content });
 
-        // Generate mock response
-        const responseContent = `Mock response to: "${params.content}"`;
-        threadMessages.push({ role: "assistant", content: responseContent });
+        let responseContent: string;
 
+        // Use real LLM if configured, otherwise mock
+        if (this.genAI && this.llmConfig) {
+            responseContent = await this.generateLLMResponse(threadMessages, params.systemPrompt);
+        } else {
+            responseContent = `Mock response to: "${params.content}"`;
+        }
+
+        threadMessages.push({ role: "assistant", content: responseContent });
         this.messages.set(params.threadId, threadMessages);
 
         // Handle memory effects
         if (params.memoryMode === "Auto") {
-            // Mock creating a memory
-            const memoryContent = `Memory derived from: "${params.content}"`;
+            // Create a memory from the user message
+            const memoryContent = params.content;
             await this.createMockMemory(memoryContent);
         }
 
@@ -146,6 +177,36 @@ export class MockBackboardService implements IBackboardService {
             content: responseContent,
             role: "assistant",
         };
+    }
+
+    /**
+     * Generate a response using the configured LLM (Gemini).
+     */
+    private async generateLLMResponse(
+        messages: { role: "user" | "assistant"; content: string }[],
+        overrideSystemPrompt?: string,
+    ): Promise<string> {
+        if (!this.genAI || !this.llmConfig) {
+            throw new Error("LLM not configured");
+        }
+
+        const systemPrompt = overrideSystemPrompt ?? this.currentSystemPrompt ?? "";
+
+        // Build conversation history for context
+        const contents = messages.map((m) => ({
+            role: m.role === "assistant" ? "model" : "user",
+            parts: [{ text: m.content }],
+        }));
+
+        const response = await this.genAI.models.generateContent({
+            model: this.llmConfig.model,
+            contents,
+            config: {
+                systemInstruction: systemPrompt,
+            },
+        });
+
+        return response.text ?? "I'm sorry, I couldn't generate a response.";
     }
 
     async *addMessageStreaming(params: {
@@ -161,12 +222,20 @@ export class MockBackboardService implements IBackboardService {
         const threadMessages = this.messages.get(params.threadId) || [];
         threadMessages.push({ role: "user", content: params.content });
 
-        const responseContent = `Mock streaming response to: "${params.content}"`;
+        let responseContent: string;
 
-        // Simulate streaming chunks
+        // Use real LLM if configured, otherwise mock
+        if (this.genAI && this.llmConfig) {
+            // For now, use non-streaming and simulate chunks (Gemini streaming is more complex)
+            responseContent = await this.generateLLMResponse(threadMessages, params.systemPrompt);
+        } else {
+            responseContent = `Mock streaming response to: "${params.content}"`;
+        }
+
+        // Simulate streaming by yielding word chunks
         const chunks = responseContent.split(" ");
         for (const chunk of chunks) {
-            await new Promise(resolve => setTimeout(resolve, 10)); // simulate latency
+            await new Promise(resolve => setTimeout(resolve, 50)); // simulate latency
             yield chunk + " ";
         }
 
@@ -174,7 +243,7 @@ export class MockBackboardService implements IBackboardService {
         this.messages.set(params.threadId, threadMessages);
 
         if (params.memoryMode === "Auto") {
-            await this.createMockMemory(`Memory derived from: "${params.content}"`);
+            await this.createMockMemory(params.content);
         }
     }
 

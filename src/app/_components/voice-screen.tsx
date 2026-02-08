@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CONTEXT_PROMPTS } from "./dummy-data";
 import { Orb } from "./orb";
+import { api } from "@/trpc/react";
 
 type VoiceState = "idle" | "listening" | "processing" | "speaking";
 
@@ -83,13 +84,24 @@ function WritingPencil() {
 
 /* ─── Main component ─── */
 
-export function VoiceScreen() {
+interface VoiceScreenProps {
+	conversationId?: string;
+}
+
+export function VoiceScreen({ conversationId: initialConversationId }: VoiceScreenProps) {
 	const [state, setState] = useState<VoiceState>("idle");
 	const [transcript, setTranscript] = useState("");
 	const [interimText, setInterimText] = useState("");
 	const [aiResponse, setAiResponse] = useState("");
 	const [volume, setVolume] = useState(0);
 	const [contextPrompt, setContextPrompt] = useState(CONTEXT_PROMPTS[0]);
+	const [currentConversationId, setCurrentConversationId] = useState<string | null>(
+		initialConversationId ?? null
+	);
+
+	// tRPC mutations for conversation and message APIs
+	const createConversation = api.conversation.create.useMutation();
+	const sendMessage = api.message.send.useMutation();
 
 	// Debug: timestamp override
 	const [showTimePicker, setShowTimePicker] = useState(false);
@@ -116,6 +128,7 @@ export function VoiceScreen() {
 	const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 	const scrollRef = useRef<HTMLDivElement | null>(null);
 	const stateRef = useRef<VoiceState>("idle");
+	const processTranscriptRef = useRef<(() => Promise<void>) | null>(null);
 
 	stateRef.current = state;
 
@@ -195,6 +208,71 @@ export function VoiceScreen() {
 		setState("listening");
 	}, []);
 
+	/* ── Process transcript and send to agent ── */
+	const processTranscript = useCallback(async () => {
+		if (!transcript.trim()) {
+			setState("idle");
+			return;
+		}
+
+		setState("processing");
+		setAiResponse("Thinking...");
+
+		try {
+			// Create conversation if we don't have one
+			let conversationId = currentConversationId;
+			if (!conversationId) {
+				const result = await createConversation.mutateAsync({});
+				conversationId = result.id;
+				setCurrentConversationId(conversationId);
+				// Update URL without triggering navigation/remount
+				window.history.replaceState(null, "", `/conversation/${conversationId}`);
+			}
+
+			// Send the transcribed message to the agent
+			const response = await sendMessage.mutateAsync({
+				conversationId,
+				content: transcript,
+			});
+
+			// Display the AI response
+			setAiResponse(response.content);
+			setState("speaking");
+
+			// Optionally use TTS for the response
+			try {
+				const ttsRes = await fetch("/api/tts", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ text: response.content }),
+				});
+
+				const blob = await ttsRes.blob();
+				const url = URL.createObjectURL(blob);
+				const audio = new Audio(url);
+
+				audioPlayerRef.current = audio;
+
+				audio.onended = () => {
+					URL.revokeObjectURL(url);
+					setState("idle");
+				};
+
+				audio.play();
+			} catch {
+				// TTS failed, just stay in idle state
+				setState("idle");
+			}
+		} catch (error) {
+			console.error("Error processing transcript:", error);
+			setAiResponse("Sorry, something went wrong. Please try again.");
+			setState("idle");
+		}
+	}, [transcript, currentConversationId, createConversation, sendMessage]);
+
+	// Keep ref updated for stopListening to use
+	processTranscriptRef.current = processTranscript;
+
 	/* ── Stop listening ── */
 	const stopListening = useCallback(async () => {
 		if (stateRef.current !== "listening") return;
@@ -209,39 +287,8 @@ export function VoiceScreen() {
 		setState("processing");
 
 		await new Promise((r) => setTimeout(r, 500));
-		await generateSpeech();
+		await processTranscriptRef.current?.();
 	}, []);
-
-	/* ── TTS ── */
-	const generateSpeech = async () => {
-		if (!transcript.trim()) {
-			setState("idle");
-			return;
-		}
-
-		setState("speaking");
-		setAiResponse("Thinking...");
-
-		const res = await fetch("/api/tts", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ text: `You said: ${transcript}` }),
-		});
-
-		const blob = await res.blob();
-		const url = URL.createObjectURL(blob);
-		const audio = new Audio(url);
-
-		audioPlayerRef.current = audio;
-		setAiResponse(`"${transcript}"`);
-
-		audio.onended = () => {
-			URL.revokeObjectURL(url);
-			setState("idle");
-		};
-
-		audio.play();
-	};
 
 	/* ── Reset ── */
 	const resetVoice = () => {
@@ -326,8 +373,8 @@ export function VoiceScreen() {
 							<button
 								onClick={() => setUseCurrentTime(true)}
 								className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all ${useCurrentTime
-										? "bg-white text-violet-600 shadow-sm"
-										: "text-stone-500 hover:text-stone-700"
+									? "bg-white text-violet-600 shadow-sm"
+									: "text-stone-500 hover:text-stone-700"
 									}`}
 							>
 								Current
@@ -335,8 +382,8 @@ export function VoiceScreen() {
 							<button
 								onClick={() => setUseCurrentTime(false)}
 								className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-all ${!useCurrentTime
-										? "bg-white text-violet-600 shadow-sm"
-										: "text-stone-500 hover:text-stone-700"
+									? "bg-white text-violet-600 shadow-sm"
+									: "text-stone-500 hover:text-stone-700"
 									}`}
 							>
 								Manual
