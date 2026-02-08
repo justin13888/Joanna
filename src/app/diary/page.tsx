@@ -4,18 +4,19 @@ import { useState, useCallback, useRef } from "react";
 import { Bookshelf } from "@/app/_components/bookshelf-screen";
 import { Diary } from "@/app/_components/diary";
 
-/* Lavender gradients matching the shelf books */
+/* Vibrant gradients matching the shelf books */
 const BOOK_CSS_GRADIENTS = [
-	["#c4b5e3", "#9b8abf"],
-	["#d8cfe8", "#b4a5d0"],
-	["#b0a0cc", "#8878a8"],
-	["#e0d8ec", "#c0b4d4"],
-	["#ccc0dc", "#a494c0"],
-	["#d4c8e0", "#a898c0"],
+	["#a78bfa", "#7c3aed"], // vibrant purple
+	["#c4b5e3", "#9b8abf"], // medium lavender
+	["#d8cfe8", "#b4a5d0"], // light lavender
+	["#b0a0cc", "#8878a8"], // deeper lavender
+	["#e9d5ff", "#a855f7"], // electric purple
+	["#f5f0ea", "#d8cfe8"], // cream/lavender mix
 ];
 function getColors(year: number) {
-	const pair = BOOK_CSS_GRADIENTS[year % BOOK_CSS_GRADIENTS.length] ?? BOOK_CSS_GRADIENTS[0]!;
-	return { light: pair[0] ?? "#c4b5e3", dark: pair[1] ?? "#9b8abf" };
+	const pair =
+		BOOK_CSS_GRADIENTS[year % BOOK_CSS_GRADIENTS.length] ?? BOOK_CSS_GRADIENTS[0]!;
+	return { light: pair[0] ?? "#ffd93d", dark: pair[1] ?? "#ff9a3c" };
 }
 
 /*
@@ -94,98 +95,43 @@ export default function DiaryPage() {
 	const showExpandingBook = (anim === "opening" || anim === "closing") && floatingYear !== null;
 
 	return (
-		<div className="relative h-screen w-full overflow-hidden bg-[#faf7f2] font-patrick">
+		<div className="relative h-screen w-full overflow-hidden diary-bg font-patrick">
 			{/* ─────── Bookshelf (z-0) ─────── */}
-			<div className="absolute inset-0 z-0">
-				<div className="flex h-full flex-col justify-center">
+			<div className="absolute inset-0 z-0 flex flex-col">
+				<div className="flex flex-1 flex-col justify-center min-h-0">
 					<Bookshelf onSelectYear={handleSelect} selectedYear={shelfGap} />
 					{anim === "idle" && (
 						<p
-							className="mt-6 text-center text-base text-stone-400/70"
+							className="mt-4 text-center text-sm text-amber-900/60"
 							style={{ animation: "fade-in 0.6s ease-out" }}
 						>
-							Tap a book to start reading
+							Tap a diary to open
 						</p>
 					)}
 				</div>
 			</div>
 
-			{/* ─────── Stage 1: Pull + rotate 180° ─────── */}
 			{showTurningBook && (
 				<div
 					className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center"
-					style={{ perspective: "1200px" }}
 				>
 					<div
 						style={{
 							width: 80,
 							height: 220,
 							borderRadius: 4,
-							transformStyle: "preserve-3d",
 							animation:
 								anim === "pulling"
 									? "book-pull-turn 0.8s cubic-bezier(0.25,0.46,0.45,0.94) forwards"
 									: "book-turn-return 0.8s ease-in forwards",
 						}}
 					>
-						{/* Face A (0°): SPINE */}
-						<div
-							className="absolute inset-0 flex items-center justify-center overflow-hidden"
-							style={{
-								borderRadius: "inherit",
-								background: `linear-gradient(180deg, ${colors.light}, ${colors.dark})`,
-								backfaceVisibility: "hidden",
-								boxShadow: "2px 4px 12px rgba(0,0,0,0.2)",
-							}}
-						>
-							<div className="absolute inset-y-0 left-0 w-[6px] rounded-l bg-black/10" />
-							<div className="absolute inset-y-0 left-[6px] w-[2px] bg-white/20" />
-							<span
-								className="font-bold tracking-widest text-white/80 drop-shadow-sm"
-								style={{ writingMode: "vertical-rl", textOrientation: "mixed", fontSize: "0.95rem" }}
-							>
-								{floatingYear}
-							</span>
-							<div className="absolute top-3 inset-x-2 h-[2px] bg-white/20 rounded-full" />
-							<div className="absolute bottom-3 inset-x-2 h-[2px] bg-white/20 rounded-full" />
-						</div>
-
-						{/* Face B (180°): PAGE EDGES — visible mid-rotation */}
-						<div
-							className="absolute inset-0 overflow-hidden"
-							style={{
-								borderRadius: "inherit",
-								backfaceVisibility: "hidden",
-								transform: "rotateY(180deg)",
-								boxShadow: "2px 4px 16px rgba(0,0,0,0.18)",
-							}}
-						>
-							<div
-								className="absolute inset-0"
-								style={{ background: "repeating-linear-gradient(to bottom, #f8f4ee 0px, #f8f4ee 2.5px, #ebe5db 2.5px, #ebe5db 3.5px)" }}
-							/>
-							<div
-								className="absolute top-0 inset-x-0 h-[5px]"
-								style={{ background: `linear-gradient(to right, ${colors.dark}, ${colors.light})`, borderRadius: "4px 4px 0 0" }}
-							/>
-							<div
-								className="absolute bottom-0 inset-x-0 h-[5px]"
-								style={{ background: `linear-gradient(to right, ${colors.dark}, ${colors.light})`, borderRadius: "0 0 4px 4px" }}
-							/>
-							<div
-								className="absolute inset-y-0 left-0 w-[5px]"
-								style={{ background: `linear-gradient(to bottom, ${colors.dark}, ${colors.light})` }}
-							/>
-						</div>
-
-						{/* Face C (90°): FRONT COVER — what you see after the 90° turn */}
+						{/* Front cover view */}
 						<div
 							className="absolute inset-0 flex items-center justify-center overflow-hidden"
 							style={{
 								borderRadius: "inherit",
 								background: `linear-gradient(135deg, ${colors.dark}, ${colors.light})`,
-								backfaceVisibility: "hidden",
-								transform: "rotateY(90deg)",
 								boxShadow: "2px 4px 16px rgba(0,0,0,0.2)",
 							}}
 						>
@@ -199,11 +145,7 @@ export default function DiaryPage() {
 							>
 								{floatingYear}
 							</span>
-							{/* Page edges on right */}
-							<div
-								className="absolute inset-y-1 right-0 w-[4px] rounded-r-[2px]"
-								style={{ background: "repeating-linear-gradient(to bottom, #f5f0ea 0px, #f5f0ea 2px, #e8e2d8 2px, #e8e2d8 3px)" }}
-							/>
+							{/* Decorative bands */}
 							<div className="absolute top-3 inset-x-4 h-[2px] bg-white/15 rounded-full" />
 							<div className="absolute bottom-3 inset-x-4 h-[2px] bg-white/15 rounded-full" />
 						</div>
@@ -235,6 +177,26 @@ export default function DiaryPage() {
 							}}
 						/>
 
+						{/* Spiral binding - center coils */}
+						<div
+							className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 flex flex-col items-center justify-center gap-2"
+							style={{
+								width: 48,
+								zIndex: 10,
+								animation:
+									anim === "opening"
+										? "spiral-appear 1s ease-in-out forwards"
+										: anim === "closing"
+											? "spiral-disappear 1s ease-in-out forwards"
+											: "none",
+								opacity: anim === "opening" ? 0 : 1, // Start at 0 for appear animation
+							}}
+						>
+							{Array.from({ length: 18 }).map((_, i) => (
+								<div key={i} className="spiral-coil" />
+							))}
+						</div>
+
 						{/* Spine strip on the left */}
 						<div
 							className="absolute top-0 bottom-0 left-0 w-[8px]"
@@ -263,14 +225,22 @@ export default function DiaryPage() {
 								boxShadow: "4px 4px 16px rgba(0,0,0,0.2)",
 							}}
 						>
-							{/* Spine edge on left */}
-							<div className="absolute inset-y-0 left-0 w-[8px] bg-black/10" />
-							<div className="absolute inset-y-0 left-[8px] w-[2px] bg-white/15" />
+							{/* Spine edge details */}
+							<div className="absolute inset-y-0 left-0 w-[14px] bg-gradient-to-r from-black/20 via-white/10 to-transparent" />
+
+							{/* Stitching Line */}
+							<div className="absolute inset-y-0 left-[4px] w-[2px] opacity-20"
+								style={{ backgroundImage: "repeating-linear-gradient(to bottom, #fff 0px, #fff 4px, transparent 4px, transparent 8px)" }} />
+
+							{/* Hinge Line */}
+							<div className="absolute inset-y-0 left-[12px] w-[2px] bg-black/5" />
+							<div className="absolute inset-y-0 left-[14px] w-px bg-white/10" />
+
 							{/* Year text */}
 							<div className="flex h-full w-full items-center justify-center">
 								<span
-									className="font-bold tracking-widest text-white/70 drop-shadow-md"
-									style={{ writingMode: "vertical-rl", textOrientation: "mixed", fontSize: "1.1rem" }}
+									className="font-bold tracking-widest text-white/80 drop-shadow-md"
+									style={{ writingMode: "vertical-rl", textOrientation: "mixed", fontSize: "1.1rem", opacity: 0.9 }}
 								>
 									{floatingYear}
 								</span>
@@ -279,16 +249,11 @@ export default function DiaryPage() {
 							<div className="absolute top-0 inset-x-0 h-px bg-white/20" />
 							<div className="absolute bottom-0 inset-x-0 h-px bg-black/10" />
 							{/* Decorative bands */}
-							<div className="absolute top-4 inset-x-4 h-[2px] bg-white/15 rounded-full" />
-							<div className="absolute bottom-4 inset-x-4 h-[2px] bg-white/15 rounded-full" />
-							{/* Page edges on right (fore-edge) */}
-							<div
-								className="absolute inset-y-1 right-0 w-[4px] rounded-r-[2px]"
-								style={{ background: "repeating-linear-gradient(to bottom, #f5f0ea 0px, #f5f0ea 2px, #e8e2d8 2px, #e8e2d8 3px)" }}
-							/>
+							<div className="absolute top-4 inset-x-4 h-[2px] bg-white/10 rounded-full" />
+							<div className="absolute bottom-4 inset-x-4 h-[2px] bg-white/10 rounded-full" />
 							{/* Subtle texture */}
 							<div
-								className="absolute inset-0 opacity-15"
+								className="absolute inset-0 opacity-10"
 								style={{ backgroundImage: "radial-gradient(circle at 60% 40%, rgba(255,255,255,0.4) 0%, transparent 60%)" }}
 							/>
 						</div>
@@ -299,12 +264,10 @@ export default function DiaryPage() {
 			{/* ─────── Diary (interactive, when fully open) ─────── */}
 			{anim === "open" && selectedYear !== null && (
 				<div
-					className="absolute inset-0 z-20 overflow-y-auto bg-[#faf7f2]"
+					className="absolute inset-0 z-20 flex items-center justify-center"
 					style={{ animation: "fade-in 0.25s ease-out" }}
 				>
-					<div className="min-h-full px-2 py-4">
-						<Diary year={selectedYear} onBack={handleClose} />
-					</div>
+					<Diary year={selectedYear} onBack={handleClose} />
 				</div>
 			)}
 		</div>

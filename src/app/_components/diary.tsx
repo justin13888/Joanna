@@ -200,7 +200,7 @@ export function Diary({ year, onBack }: DiaryProps) {
 	);
 
 	return (
-		<div className="diary-bg flex flex-col items-center rounded-2xl p-4 font-patrick sm:p-6">
+		<div className="flex flex-col items-center rounded-2xl p-4 font-patrick sm:p-6">
 			{/* Close / put book back */}
 			{onBack && (
 				<button
@@ -236,11 +236,10 @@ export function Diary({ year, onBack }: DiaryProps) {
 							key={month}
 							type="button"
 							onClick={() => handleMonthTab(index)}
-							className={`month-tab -mr-px relative rounded-l-lg border border-r-0 px-3 py-2 text-lg font-semibold sm:px-4 sm:text-xl ${
-								selectedMonth === index
-									? "month-tab-active z-20 border-[#c4b8d6] bg-[#f5f0ea] text-[#5a4a7a]"
-									: "month-tab-inactive border-[#b8acd0] bg-[#b8aad2] text-[#ece6f4] hover:bg-[#c8bce0] hover:text-white"
-							}`}
+							className={`month-tab -mr-px relative rounded-l-lg border border-r-0 px-3 py-2 text-lg font-semibold sm:px-4 sm:text-xl ${selectedMonth === index
+								? "month-tab-active z-20 border-[#c4b8d6] bg-[#f5f0ea] text-[#5a4a7a]"
+								: "month-tab-inactive border-[#b8acd0] bg-[#b8aad2] text-[#ece6f4] hover:bg-[#c8bce0] hover:text-white"
+								}`}
 						>
 							{month.slice(0, 3)}
 						</button>
@@ -263,9 +262,8 @@ export function Diary({ year, onBack }: DiaryProps) {
 									(PAGE_EDGE_COUNT - i) * 3,
 								height: PAGE_HEIGHT,
 								borderRadius: "16px",
-								background: `linear-gradient(180deg, ${
-									i % 2 === 0 ? "#ede8e0" : "#eae4dc"
-								} 0%, ${i % 2 === 0 ? "#e8e2d8" : "#e5dfd5"} 100%)`,
+								background: `linear-gradient(180deg, ${i % 2 === 0 ? "#ede8e0" : "#eae4dc"
+									} 0%, ${i % 2 === 0 ? "#e8e2d8" : "#e5dfd5"} 100%)`,
 								zIndex: i,
 								boxShadow:
 									i === 0
@@ -353,32 +351,29 @@ export function Diary({ year, onBack }: DiaryProps) {
 													if (entry)
 														setSelectedEntry(entry);
 												}}
-												className={`calendar-cell group relative flex flex-col items-center justify-center rounded-lg border transition-all duration-200 ${
-													isSelected
-														? "border-[#9b8dba] bg-[#d8cfe8] shadow-md shadow-[#c4b8d6]/50"
-														: hasEntry
-															? "cursor-pointer border-[#d0c4e0] bg-[#ede6f5] hover:border-[#b0a4c4] hover:bg-[#ddd4eb] hover:shadow-md hover:shadow-[#c4b8d6]/30"
-															: "cursor-default border-transparent"
-												}`}
+												className={`calendar-cell group relative flex flex-col items-center justify-center rounded-lg border transition-all duration-200 ${isSelected
+													? "border-[#9b8dba] bg-[#d8cfe8] shadow-md shadow-[#c4b8d6]/50"
+													: hasEntry
+														? "cursor-pointer border-[#d0c4e0] bg-[#ede6f5] hover:border-[#b0a4c4] hover:bg-[#ddd4eb] hover:shadow-md hover:shadow-[#c4b8d6]/30"
+														: "cursor-default border-transparent"
+													}`}
 											>
 												<span
-													className={`text-xl sm:text-2xl ${
-														isSelected
-															? "font-bold text-[#3d2d5c]"
-															: hasEntry
-																? "font-semibold text-[#5a4a7a] group-hover:text-[#3d2d5c]"
-																: "text-[#b0a4c4]"
-													}`}
+													className={`text-xl sm:text-2xl ${isSelected
+														? "font-bold text-[#3d2d5c]"
+														: hasEntry
+															? "font-semibold text-[#5a4a7a] group-hover:text-[#3d2d5c]"
+															: "text-[#b0a4c4]"
+														}`}
 												>
 													{day}
 												</span>
 												{hasEntry && (
 													<span
-														className={`mt-0.5 h-1.5 w-1.5 rounded-full transition-transform group-hover:scale-150 ${
-															isSelected
-																? "bg-[#5a4a7a]"
-																: "bg-[#9b8dba]"
-														}`}
+														className={`mt-0.5 h-1.5 w-1.5 rounded-full transition-transform group-hover:scale-150 ${isSelected
+															? "bg-[#5a4a7a]"
+															: "bg-[#9b8dba]"
+															}`}
 													/>
 												)}
 											</button>
